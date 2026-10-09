@@ -228,6 +228,7 @@
     }
     .card.wide { grid-column: 1 / -1; }
     .card-head { display: grid; gap: 2px; }
+    .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .card-head p { font-size: .87rem; color: var(--ink-2); }
     .chart { width: 100%; min-width: 0; }
     .chart svg { display: block; width: 100%; overflow: visible; }
@@ -457,11 +458,14 @@
             <ol class="rank" id="rank"></ol>
           </section>
 
-          <section class="card">
+          <section class="card wide">
             <div class="card-head">
-              <span class="label">4 · Grandezza del canale</span>
-              <h2>Visualizzazioni tipiche per grandezza del canale</h2>
-              <p>Canali divisi per numero di iscritti. Il numero sopra la colonna è il valore tipico: metà degli Shorts fa di più, metà di meno.</p>
+              <div class="card-top">
+                <span class="label">4 · Fasce di visualizzazioni</span>
+                <span class="chip" id="bands-count">basato su 0 Shorts</span>
+              </div>
+              <h2>Shorts per fasce di visualizzazioni</h2>
+              <p>Quanti Shorts arrivano a ogni livello di visualizzazioni. Passa sopra una colonna per vedere quanti sono di canali piccoli.</p>
             </div>
             <div class="chart" id="chart-size"></div>
           </section>
@@ -483,7 +487,7 @@
             <div id="share" style="display:grid; gap:12px"></div>
           </section>
 
-          <section class="card">
+          <section class="card wide">
             <div class="card-head">
               <span class="label">7 · Canali nuovi</span>
               <h2>Canali aperti negli ultimi 6 mesi</h2>
@@ -849,12 +853,6 @@
       const pos = (a.length - 1) * q, b = Math.floor(pos);
       return a[b + 1] !== undefined ? a[b] + (a[b + 1] - a[b]) * (pos - b) : a[b];
     }
-    const GRUPPI = [
-      { nome: 'Sotto 1.000', breve: '< 1k', max: 1e3 },
-      { nome: '1.000 – 10.000', breve: '1k–10k', max: 1e4 },
-      { nome: '10.000 – 100.000', breve: '10k–100k', max: 1e5 },
-      { nome: 'Oltre 100.000', breve: '> 100k', max: Infinity },
-    ];
     const PICCOLO = 1e4;            // "canale piccolo" = sotto 10.000 iscritti
     const GIORNI_NUOVO = 182;       // "canale nuovo" = aperto negli ultimi 6 mesi
 
@@ -1312,36 +1310,64 @@
       return { aggiornato: new Date().toISOString(), ambito, shortsAnalizzati: video.length, giorniIndietro: GIORNI_SCOPRI, temi: top };
     }
 
-    // ---------- Grafico 4: grandezza del canale ----------
-    function graficoGrandezza(box, video) {
+    // ---------- Grafico 4: fasce di visualizzazioni ----------
+    const FASCE = [
+      { nome: 'Fino a 30k', max: 3e4 },
+      { nome: '30k – 50k', max: 5e4 },
+      { nome: '50k – 100k', max: 1e5 },
+      { nome: '100k – 500k', max: 5e5 },
+      { nome: '500k – 1M', max: 1e6 },
+      { nome: '1M – 3M', max: 3e6 },
+      { nome: '3M – 10M', max: 1e7 },
+      { nome: 'Oltre 10M', max: Infinity },
+    ];
+    function graficoFasce(box, video) {
       box.replaceChildren();
-      const gruppi = GRUPPI.map((g, i) => {
-        const min = i ? GRUPPI[i - 1].max : 0;
-        const views = video.filter((v) => v.iscritti != null && v.iscritti >= min && v.iscritti < g.max).map((v) => v.views);
-        return { g, n: views.length, med: mediana(views), basso: percentile(views, 0.25), alto: percentile(views, 0.75) };
+      $('bands-count').textContent = 'basato su ' + nf.format(video.length) + ' Shorts';
+      const fasce = FASCE.map((f, i) => {
+        const min = i ? FASCE[i - 1].max : 0;
+        const dentro = video.filter((v) => v.views >= min && v.views < f.max);
+        return { f, n: dentro.length, piccoli: dentro.filter((v) => v.iscritti != null && v.iscritti < PICCOLO).length };
       });
-      const W = Math.max(280, box.clientWidth), H = 230;
-      const m = { t: 22, r: 4, b: 40, l: 4 };
+      const stretto = box.clientWidth < 520;
+      const W = Math.max(280, box.clientWidth), H = stretto ? 270 : 250;
+      const m = { t: 18, r: 4, b: stretto ? 54 : 30, l: 44 };
       const iw = W - m.l - m.r, ih = H - m.t - m.b;
-      const max = Math.max(...gruppi.map((x) => x.med || 0), 1);
-      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Visualizzazioni tipiche per grandezza del canale' }, box);
-      el('line', { x1: m.l, x2: W - m.r, y1: m.t + ih, y2: m.t + ih, class: 'grid' }, svg);
-      const banda = iw / gruppi.length, bw = Math.min(56, banda * 0.55);
-      gruppi.forEach((x, i) => {
+      const max = scalaBella(Math.max(...fasce.map((x) => x.n), 1));
+      const y = (v) => m.t + ih - (v / max) * ih;
+      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Shorts per fasce di visualizzazioni' }, box);
+
+      // titolo dell'asse verticale
+      testo(svg, 10, m.t + ih / 2, 'Numero di Shorts', { transform: 'rotate(-90 10 ' + (m.t + ih / 2) + ')', 'text-anchor': 'middle' });
+      const passi = max <= 4 ? max : 4;
+      for (let k = 0; k <= passi; k++) {
+        const v = max / passi * k;
+        el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'grid' }, svg);
+        testo(svg, m.l - 6, y(v) + 4, nf.format(Math.round(v)), { 'text-anchor': 'end' });
+      }
+      const banda = iw / fasce.length, bw = Math.min(70, banda * 0.72);
+      for (let i = 1; i < fasce.length; i++)
+        el('line', { x1: m.l + banda * i, x2: m.l + banda * i, y1: m.t, y2: m.t + ih, class: 'grid' }, svg);
+
+      fasce.forEach((x, i) => {
         const cx = m.l + banda * i + banda / 2;
         const g = el('g', { class: 'bar-g', tabindex: 0 }, svg);
-        const h = x.med ? Math.max(2, x.med / max * ih) : 0, top = m.t + ih - h;
-        if (h) {
-          const r = Math.min(4, h, bw / 2), bx = cx - bw / 2;
+        if (x.n > 0) {
+          const top = y(x.n), h = m.t + ih - top, r = Math.min(4, h, bw / 2), bx = cx - bw / 2;
           el('path', { class: 'bar', d: 'M' + bx + ',' + (top + h) + 'V' + (top + r) + 'Q' + bx + ',' + top + ' ' + (bx + r) + ',' + top +
             'H' + (bx + bw - r) + 'Q' + (bx + bw) + ',' + top + ' ' + (bx + bw) + ',' + (top + r) + 'V' + (top + h) + 'Z' }, g);
+          testo(g, cx, top - 6, x.n, { 'text-anchor': 'middle', class: 'val' });
         }
-        testo(g, cx, top - 6, x.n ? compatto(x.med) : 'nessuno', { 'text-anchor': 'middle', class: 'val' });
-        testo(svg, cx, H - 22, x.g.breve, { 'text-anchor': 'middle', class: 'val' });
-        testo(svg, cx, H - 6, x.n + ' Shorts', { 'text-anchor': 'middle' });
+        // su schermi stretti le etichette vanno in obliquo per non accavallarsi
+        const ly = m.t + ih + 16;
+        testo(svg, cx, ly, x.f.nome, stretto
+          ? { 'text-anchor': 'end', transform: 'rotate(-40 ' + cx + ' ' + ly + ')' }
+          : { 'text-anchor': 'middle' });
         el('rect', { x: cx - banda / 2, y: m.t, width: banda, height: ih, class: 'hit' }, g);
-        const info = (e) => mostraTip(e, x.n ? compatto(x.med) + ' visualizzazioni' : 'Nessuno Short',
-          x.n ? ['Canali con ' + x.g.nome + ' iscritti', 'Di solito tra ' + compatto(x.basso) + ' e ' + compatto(x.alto), x.n + ' Shorts trovati'] : ['Canali con ' + x.g.nome + ' iscritti']);
+        const info = (e) => mostraTip(e, x.n + (x.n === 1 ? ' Short' : ' Shorts'), [
+          x.f.nome + ' visualizzazioni',
+          x.n ? 'di cui ' + x.piccoli + ' di canali sotto 10.000 iscritti' : 'nessuno Short in questa fascia',
+        ]);
         g.addEventListener('pointermove', info);
         g.addEventListener('focus', info);
         g.addEventListener('pointerleave', nascondiTip);
@@ -1562,7 +1588,7 @@
       if (!videoAttuali.length) return;
       graficoSettimane($('chart-weeks'), settimaneAttuali);
       graficoVelocita($('chart-speed'), videoAttuali);
-      graficoGrandezza($('chart-size'), videoAttuali);
+      graficoFasce($('chart-size'), videoAttuali);
     }
     function mostraRisultati() {
       settimaneAttuali = settimane(videoAttuali);
