@@ -154,6 +154,16 @@
     .discover { display: grid; gap: 14px; }
     .discover-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-end; justify-content: space-between; }
     .discover-head p { font-size: .87rem; color: var(--ink-2); }
+    .discover-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .field { display: grid; gap: 4px; min-width: 0; }
+    .field.grow { flex: 1 1 200px; }
+    select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    select {
+      font: inherit; font-size: .95rem; padding: 11px 12px; border-radius: 12px; max-width: 100%;
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    }
+    .field input { padding: 11px 14px; font-size: .95rem; }
+    .disc-cost { font-size: .82rem; color: var(--muted); }
     .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
     .topic {
       display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto; gap: 4px 14px; align-items: center;
@@ -310,11 +320,39 @@
     <section class="card discover" id="discover">
       <div class="discover-head">
         <div class="card-head">
-          <span class="label">Scopri · controllo automatico</span>
-          <h2>Argomenti virali oggi nel mondo</h2>
-          <p id="discover-sub">Ogni mattina cerco gli Shorts più visti degli ultimi giorni e li raggruppo per hashtag.</p>
+          <span class="label">Scopri</span>
+          <h2>Argomenti virali in questo momento nel mondo</h2>
+          <p id="discover-sub">Cerco gli Shorts più visti degli ultimi 3 giorni e li raggruppo per hashtag. Non devi scrivere niente.</p>
         </div>
       </div>
+      <form class="discover-form" id="discover-form">
+        <label class="field">
+          <span class="label">Categoria</span>
+          <select id="disc-cat">
+            <option value="tutte">Tutte le categorie</option>
+            <option value="26">Cucina, fai da te e stile</option>
+            <option value="17">Sport e fitness</option>
+            <option value="20">Videogiochi</option>
+            <option value="15">Animali</option>
+            <option value="28">Scienza e tecnologia</option>
+            <option value="27">Istruzione</option>
+            <option value="22">Persone e blog</option>
+            <option value="23">Comicità</option>
+            <option value="24">Intrattenimento</option>
+            <option value="10">Musica</option>
+            <option value="1">Film e animazione</option>
+            <option value="2">Auto e motori</option>
+            <option value="19">Viaggi</option>
+          </select>
+        </label>
+        <label class="field grow">
+          <span class="label">Area (facoltativa)</span>
+          <input id="disc-area" type="text" placeholder="Es. soldi, gym, skincare…" autocomplete="off">
+        </label>
+        <button id="disc-btn" type="submit">Cerca argomenti virali</button>
+      </form>
+      <p class="disc-cost" id="disc-cost"></p>
+      <p class="msg info" id="disc-status" hidden></p>
       <ol class="topics" id="topics"></ol>
       <div class="discover-foot">
         <span id="discover-info"></span>
@@ -1053,7 +1091,8 @@
       'https://raw.githubusercontent.com/Kebbenn/Test-PAges/claude/bold-wright-zcrnft/data/scoperte/ultimo.json',
       'data/scoperte/ultimo.json',
     ];
-    let scoperta = null;
+    let scoperta = null;     // classifica del controllo automatico (se attivo su GitHub)
+    let vista = null;        // classifica mostrata adesso (automatica o cercata ora)
     let mostraTutti = false;
     async function caricaScoperte() {
       for (const url of FONTI_SCOPERTE) {
@@ -1064,6 +1103,10 @@
           if (d && Array.isArray(d.temi)) { scoperta = d; break; }
         } catch (e) { /* provo la fonte successiva */ }
       }
+      const ultima = leggi(K_ULTIMA_SCOPERTA, null);
+      // mostro la più recente tra quella automatica e l'ultima cercata da te
+      vista = [scoperta, ultima].filter((d) => d && Array.isArray(d.temi))
+        .sort((a, b) => new Date(b.aggiornato) - new Date(a.aggiornato))[0] || null;
       mostraScoperte();
       mostraCrediti();
     }
@@ -1073,20 +1116,19 @@
     function mostraScoperte() {
       const ol = $('topics');
       ol.replaceChildren();
-      if (!scoperta || !scoperta.temi.length) {
-        ol.append(paragrafo(scoperta
-          ? 'Il controllo di oggi non ha trovato argomenti abbastanza forti. Riprova domani.'
-          : 'Il controllo automatico non ha ancora fatto la prima classifica. Appena parte, la trovi qui.', 'empty-chart'));
+      if (!vista || !vista.temi.length) {
+        ol.append(paragrafo(vista
+          ? 'Non ho trovato argomenti abbastanza forti. Prova con un\'altra categoria o togli l\'area.'
+          : 'Scegli una categoria e premi "Cerca argomenti virali". Qui comparirà la classifica.', 'empty-chart'));
         $('discover-info').textContent = '';
         $('discover-more').hidden = true;
         return;
       }
-      const quando = new Date(scoperta.aggiornato);
-      $('discover-sub').textContent = 'Shorts più visti degli ultimi ' + (scoperta.giorniIndietro || 3) +
-        ' giorni in tutto il mondo, raggruppati per hashtag. Premi "Analizza" per l\'analisi completa.';
-      $('discover-info').textContent = 'Aggiornato ' + quando.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) +
-        ' alle ' + quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + nf.format(scoperta.shortsAnalizzati) + ' Shorts controllati';
-      const lista = mostraTutti ? scoperta.temi : scoperta.temi.slice(0, 10);
+      const quando = new Date(vista.aggiornato);
+      $('discover-info').textContent = (vista.ambito ? vista.ambito + ' · ' : 'Controllo automatico · ') +
+        'aggiornato ' + quando.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) +
+        ' alle ' + quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + nf.format(vista.shortsAnalizzati) + ' Shorts controllati';
+      const lista = mostraTutti ? vista.temi : vista.temi.slice(0, 10);
       lista.forEach((t) => {
         const li = document.createElement('li'); li.className = 'topic';
         const pos = document.createElement('span'); pos.className = 'pos'; pos.textContent = t.posizione;
@@ -1098,7 +1140,7 @@
         if (t.nuovo) chip('Nuovo', 'new');
         else if (t.variazione > 0) chip('↑ ' + t.variazione, 'up');
         else if (t.variazione < 0) chip('↓ ' + Math.abs(t.variazione), 'down');
-        else if (t.variazione === null) chip('Rientrato');
+        else if (t.variazione === null && !vista.ambito) chip('Rientrato');
         if (t.giorniInClassifica >= 3) chip(t.giorniInClassifica + ' giorni di fila');
         if (t.lingua) chip(NOMI_LINGUE[t.lingua] || t.lingua.toUpperCase());
         const meta = document.createElement('span'); meta.className = 'meta';
@@ -1121,8 +1163,153 @@
         li.append(pos, main, b);
         ol.append(li);
       });
-      $('discover-more').hidden = scoperta.temi.length <= 10;
-      $('discover-more').textContent = mostraTutti ? 'Mostra solo i primi 10' : 'Mostra tutti (' + scoperta.temi.length + ')';
+      $('discover-more').hidden = vista.temi.length <= 10;
+      $('discover-more').textContent = mostraTutti ? 'Mostra solo i primi 10' : 'Mostra tutti (' + vista.temi.length + ')';
+    }
+
+    // ---------- Scopri adesso, dal sito ----------
+    const K_ULTIMA_SCOPERTA = 'radar-ultima-scoperta';
+    const K_STORICO_SCOPERTE = 'radar-storico-scoperte';
+    const TUTTE_CATEGORIE = ['', '1', '2', '10', '15', '17', '19', '20', '22', '23', '24', '26', '27', '28'];
+    const GIORNI_SCOPRI = 3;
+    // Hashtag troppo generici per dire qualcosa sull'argomento
+    const HASHTAG_GENERICI = new Set(('shorts short shortsvideo shortvideo shortsfeed shortsviral youtubeshorts ytshorts yt youtube ' +
+      'viral viralvideo viralshorts viralshort trending trend trendingshorts fyp foryou foryoupage explore explorepage ' +
+      'reels reel reelsinstagram instagram tiktok tiktokviral subscribe like likes comment share follow new video videos ' +
+      'funny funnyvideo funnyshorts comedy meme memes lol love cute satisfying asmr music song edit edits capcut ' +
+      'shortfeed shortsbeta shortsyoutube 1million 1m 100k 4k hd 2024 2025 2026 india usa uk').split(' '));
+
+    function passaggiScopri() {
+      const area = $('disc-area').value.trim();
+      const cat = $('disc-cat').value;
+      if (area) return [{ q: area, cat: cat === 'tutte' ? '' : cat, pagine: 2 }];
+      if (cat === 'tutte') return TUTTE_CATEGORIE.map((c) => ({ q: '', cat: c, pagine: 1 }));
+      return [{ q: '', cat, pagine: 2 }];
+    }
+    const costoScopri = () => passaggiScopri().reduce((a, p) => a + p.pagine * 100, 0) + 15;
+    function mostraCostoScopri() {
+      const c = costoScopri();
+      $('disc-cost').textContent = 'Questa ricerca usa circa ' + nf.format(c) + ' crediti' +
+        (c > 1000 ? '. Per spendere meno scegli una sola categoria (circa 215 crediti).' : '.');
+    }
+    function statoScopri(testo, tipo) {
+      const p = $('disc-status');
+      p.hidden = !testo;
+      p.textContent = testo || '';
+      p.className = 'msg ' + (tipo || 'info');
+    }
+    function trovaHashtag(testo, escludi) {
+      const trovati = new Set();
+      for (const m of (testo || '').matchAll(/#([\p{L}\p{N}_]+)/gu)) {
+        const t = m[1].toLowerCase();
+        if (t.length < 3 || t.length > 30 || /^\d+$/.test(t) || HASHTAG_GENERICI.has(t) || escludi(t)) continue;
+        trovati.add(t);
+        if (trovati.size >= 8) break;   // chi mette 40 hashtag non deve contare 40 volte
+      }
+      return [...trovati];
+    }
+
+    async function scopriAdesso() {
+      const passaggi = passaggiScopri();
+      const area = $('disc-area').value.trim();
+      const sel = $('disc-cat');
+      const nomeCat = sel.options[sel.selectedIndex].text;
+      const ambito = area ? 'Area "' + area + '"' + (sel.value !== 'tutte' ? ' in ' + nomeCat : '') : nomeCat;
+      const ora = Date.now();
+      const dopo = new Date(ora - GIORNI_SCOPRI * GIORNO).toISOString();
+
+      // 1. gli Shorts più visti degli ultimi giorni
+      const ids = new Set();
+      for (let i = 0; i < passaggi.length; i++) {
+        const ps = passaggi[i];
+        statoScopri('Cerco gli Shorts più visti… (' + (i + 1) + ' di ' + passaggi.length + ')');
+        let pagina = null;
+        for (let k = 0; k < ps.pagine; k++) {
+          const par = {
+            part: 'id', type: 'video', videoDuration: 'short', order: 'viewCount', maxResults: 50,
+            publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
+          };
+          if (ps.q) par.q = ps.q;
+          if (ps.cat) par.videoCategoryId = ps.cat;
+          if (pagina) par.pageToken = pagina;
+          let d;
+          try { d = await chiama('search', par, 100); } catch (e) {
+            if (passaggi.length > 1 && /errore \(400\)/.test(e.message)) break;   // categoria non valida: la salto
+            throw e;
+          }
+          (d.items || []).forEach((it) => it.id && it.id.videoId && ids.add(it.id.videoId));
+          pagina = d.nextPageToken;
+          if (!pagina) break;
+        }
+      }
+
+      // 2. i numeri di ogni Short
+      statoScopri('Leggo le visualizzazioni di ' + ids.size + ' Shorts…');
+      const paroleArea = parole(area);
+      const escludi = (t) => paroleArea.length > 0 && parole(t).every((p) => paroleArea.includes(p));
+      const video = [];
+      for (const gruppo of aGruppi([...ids], 50)) {
+        const d = await chiama('videos', {
+          part: 'snippet,statistics,contentDetails', id: gruppo.join(','),
+          fields: 'items(id,snippet(title,description,channelId,channelTitle,publishedAt,defaultLanguage,defaultAudioLanguage),statistics/viewCount,contentDetails/duration)',
+        }, 1);
+        (d.items || []).forEach((v) => {
+          const durata = durataSecondi(v.contentDetails && v.contentDetails.duration);
+          if (!v.statistics || v.statistics.viewCount == null || !durata || durata > DURATA_MAX_SHORT) return;
+          const views = +v.statistics.viewCount;
+          const giorni = Math.max((ora - new Date(v.snippet.publishedAt)) / GIORNO, 1);
+          const lingua = (v.snippet.defaultAudioLanguage || v.snippet.defaultLanguage || '').slice(0, 2).toLowerCase() || null;
+          video.push({
+            id: v.id, titolo: decodifica(v.snippet.title), canale: decodifica(v.snippet.channelTitle), canaleId: v.snippet.channelId,
+            lingua, views, vpd: views / giorni,
+            temi: trovaHashtag(decodifica(v.snippet.title) + ' ' + decodifica(v.snippet.description), escludi),
+          });
+        });
+      }
+
+      // 3. raggruppo per hashtag: serve più di un canale, e conta solo lo Short migliore di ogni canale
+      const gruppi = new Map();
+      video.forEach((v) => v.temi.forEach((t) => { if (!gruppi.has(t)) gruppi.set(t, []); gruppi.get(t).push(v); }));
+      const temi = [];
+      gruppi.forEach((lista, tag) => {
+        const canali = new Map();
+        lista.forEach((v) => { if (!canali.has(v.canaleId) || canali.get(v.canaleId).vpd < v.vpd) canali.set(v.canaleId, v); });
+        if (lista.length < 2 || canali.size < 2) return;
+        const lingue = {};
+        lista.forEach((v) => { if (v.lingua) lingue[v.lingua] = (lingue[v.lingua] || 0) + 1; });
+        const migliori = [...canali.values()].sort((a, b) => b.vpd - a.vpd);
+        temi.push({
+          tag,
+          punteggio: Math.round(migliori.reduce((a, v) => a + v.vpd, 0)),
+          shorts: lista.length,
+          canali: canali.size,
+          vpdTipico: Math.round(mediana(lista.map((v) => v.vpd))),
+          lingua: (Object.entries(lingue).sort((a, b) => b[1] - a[1])[0] || [null])[0],
+          esempi: migliori.slice(0, 3).map((v) => ({ id: v.id, titolo: v.titolo, canale: v.canale, views: v.views })),
+        });
+      });
+      temi.sort((a, b) => b.punteggio - a.punteggio);
+      const top = temi.slice(0, 40);
+
+      // 4. confronto con l'ultima volta che hai cercato la stessa cosa
+      const chiaveAmbito = (sel.value + '|' + area.toLowerCase());
+      const storico = leggi(K_STORICO_SCOPERTE, {});
+      const prima = storico[chiaveAmbito];
+      const giaVisti = new Set(prima ? prima.visti : []);
+      top.forEach((t, i) => {
+        t.posizione = i + 1;
+        const p = prima && prima.ultima.find((x) => x.tag === t.tag);
+        t.variazione = p ? p.posizione - t.posizione : null;
+        t.nuovo = !!prima && !giaVisti.has(t.tag);
+        if (!prima) t.variazione = 0;   // prima volta: niente frecce
+      });
+      storico[chiaveAmbito] = {
+        ultima: top.map((t) => ({ tag: t.tag, posizione: t.posizione })),
+        visti: [...new Set([...giaVisti, ...top.map((t) => t.tag)])].slice(-400),
+      };
+      scrivi(K_STORICO_SCOPERTE, storico);
+
+      return { aggiornato: new Date().toISOString(), ambito, shortsAnalizzati: video.length, giorniIndietro: GIORNI_SCOPRI, temi: top };
     }
 
     // ---------- Grafico 4: grandezza del canale ----------
@@ -1446,6 +1633,29 @@
     }));
 
     $('discover-more').addEventListener('click', () => { mostraTutti = !mostraTutti; mostraScoperte(); });
+    $('disc-cat').addEventListener('change', mostraCostoScopri);
+    $('disc-area').addEventListener('input', mostraCostoScopri);
+    $('discover-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!chiave) {
+        $('key-box').open = true;
+        statoScopri('Prima incolla la tua chiave YouTube qui sotto e premi Salva.', 'error');
+        return;
+      }
+      $('disc-btn').disabled = true;
+      try {
+        const risultato = await scopriAdesso();
+        vista = risultato;
+        mostraTutti = false;
+        scrivi(K_ULTIMA_SCOPERTA, risultato);
+        statoScopri('', '');
+        mostraScoperte();
+      } catch (err) {
+        statoScopri(err.message, 'error');
+      } finally {
+        $('disc-btn').disabled = false;
+      }
+    });
 
     $('dl-current').addEventListener('click', () => {
       const oggi = new Date().toISOString();
@@ -1478,6 +1688,7 @@
     mostraChiave();
     mostraCrediti();
     aggiornaBottoni();
+    mostraCostoScopri();
     caricaScoperte();
     setInterval(mostraCrediti, 60000);
   </script>

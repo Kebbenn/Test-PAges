@@ -8,8 +8,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const CHIAVE = process.env.YOUTUBE_API_KEY;
 if (!CHIAVE) {
-  console.error('Manca la chiave: aggiungi il segreto YOUTUBE_API_KEY nelle impostazioni del progetto su GitHub.');
-  process.exit(1);
+  // Il controllo automatico è spento finché non si aggiunge la chiave: esco senza errore
+  console.log('Controllo automatico spento: per accenderlo aggiungi il segreto YOUTUBE_API_KEY nelle impostazioni del progetto su GitHub.');
+  process.exit(0);
 }
 
 const CARTELLA = new URL('../data/scoperte/', import.meta.url);
