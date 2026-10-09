@@ -17,6 +17,7 @@
       --muted: #737a85;
       --line: #e3e6ea;
       --accent: #2a78d6;
+      --series-2: #eb6834;
       --btn-bg: #14161a;
       --btn-ink: #ffffff;
       --good: #0ca30c;
@@ -30,13 +31,13 @@
     @media (prefers-color-scheme: dark) {
       :root:not([data-theme="light"]) {
         --bg: #0f1113; --surface: #181b1f; --ink: #f1f2f4; --ink-2: #b9bec6; --muted: #8a919b;
-        --line: #2a2f36; --accent: #3987e5; --btn-bg: #f1f2f4; --btn-ink: #0f1113;
+        --line: #2a2f36; --accent: #3987e5; --series-2: #d95926; --btn-bg: #f1f2f4; --btn-ink: #0f1113;
         --warn: #fab219; --error-bg: #3a1818; --error-ink: #f3a5a5; color-scheme: dark;
       }
     }
     :root[data-theme="dark"] {
       --bg: #0f1113; --surface: #181b1f; --ink: #f1f2f4; --ink-2: #b9bec6; --muted: #8a919b;
-      --line: #2a2f36; --accent: #3987e5; --btn-bg: #f1f2f4; --btn-ink: #0f1113;
+      --line: #2a2f36; --accent: #3987e5; --series-2: #d95926; --btn-bg: #f1f2f4; --btn-ink: #0f1113;
       --warn: #fab219; --error-bg: #3a1818; --error-ink: #f3a5a5; color-scheme: dark;
     }
 
@@ -190,6 +191,36 @@
       .topic { grid-template-columns: 1.6rem minmax(0, 1fr); }
       .topic button { grid-column: 2; justify-self: start; }
     }
+
+    /* Trend: sta esplodendo o è passato? */
+    .trend-head { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-start; justify-content: space-between; }
+    .seg { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 2px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); max-width: 100%; }
+    .seg button {
+      background: none; color: var(--ink-2); font-weight: 500; font-size: .87rem; padding: 7px 12px; border-radius: 9px;
+    }
+    .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .trend-answer { font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .trend-answer::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .trend-answer.good::before { background: var(--good); }
+    .trend-answer.warn::before { background: var(--warn); }
+    .trend-answer.bad::before { background: var(--bad); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+    .kpi { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+    .kpi-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .kpi .v { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+    .kpi p { font-size: .82rem; color: var(--muted); }
+    .chg { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+    .chg.up { color: var(--good); }
+    .chg.down { color: var(--bad); }
+    .chg.flat { color: var(--muted); }
+    .trend-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .trend-charts > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+    .trend-charts h3 { font-size: .95rem; font-weight: 600; }
+    .chart .line2 { fill: none; stroke: var(--series-2); stroke-width: 2; stroke-dasharray: 5 4; }
+    .chart .dot2 { fill: var(--series-2); stroke: var(--surface); stroke-width: 1.5; pointer-events: none; }
+    .chart .bar.partial { opacity: .45; }
+    .legend i.line { height: 2px; width: 14px; border-radius: 0; background: var(--series-2); }
+    @media (max-width: 760px) { .trend-charts { grid-template-columns: 1fr; } }
 
     /* Verdetto finale */
     .verdict {
@@ -386,7 +417,7 @@
         <label><input type="radio" name="livello" value="profonda"><span><b>Profonda</b> fino a 300 · 605 crediti</span></label>
       </div>
       <div class="search-note">
-        <span>Cerco solo Shorts (fino a 3 minuti) usciti negli ultimi 3 mesi: i più pertinenti, i più visti e i più nuovi.
+        <span>Cerco solo Shorts (fino a 3 minuti) di qualsiasi periodo: i più pertinenti, i più visti e i più nuovi.
           Scarto quelli che non parlano del tuo argomento.</span>
       </div>
     </section>
@@ -401,7 +432,7 @@
     </section>
 
     <div id="results" hidden>
-      <div style="display:grid; gap:16px">
+      <div style="display:grid; grid-template-columns:minmax(0, 1fr); gap:16px">
         <section class="verdict" id="verdict">
           <span class="label">Vale la pena?</span>
           <h2 id="verdict-title">—</h2>
@@ -428,6 +459,38 @@
           <div class="signals" id="opp-signals"></div>
         </section>
 
+        <section class="card" id="trend">
+          <div class="trend-head">
+            <div class="card-head">
+              <span class="label">Trend</span>
+              <h2>Il trend sta esplodendo o è passato?</h2>
+              <p>Confronto il periodo più recente con quello subito prima.</p>
+            </div>
+            <div class="seg" role="group" aria-label="Periodo">
+              <button type="button" data-periodo="giorni">Ultimi giorni</button>
+              <button type="button" data-periodo="settimane">Ultime settimane</button>
+              <button type="button" data-periodo="mesi">Ultimi mesi</button>
+            </div>
+          </div>
+          <p class="trend-answer" id="trend-answer">—</p>
+          <div class="kpis" id="kpis"></div>
+          <p class="muted" style="font-size:.82rem" id="trend-note"></p>
+          <div class="trend-charts">
+            <div>
+              <h3>Shorts pubblicati nel tempo</h3>
+              <div class="legend"><span><i></i>Shorts pubblicati</span><span><i class="line"></i>Andamento (media di 3 periodi)</span></div>
+              <div class="chart" id="chart-trend-shorts"></div>
+              <h3 style="margin-top:8px">Visualizzazioni degli Shorts pubblicati</h3>
+              <div class="chart" id="chart-trend-views"></div>
+            </div>
+            <div>
+              <h3>Canali diversi che hanno pubblicato</h3>
+              <div class="legend"><span><i></i>Canali che hanno pubblicato</span></div>
+              <div class="chart" id="chart-trend-channels"></div>
+            </div>
+          </div>
+        </section>
+
         <div class="charts">
           <section class="card">
             <div class="card-head">
@@ -443,7 +506,7 @@
             <div class="card-head">
               <span class="label">2 · Velocità</span>
               <h2>Visualizzazioni al giorno di ogni video</h2>
-              <p>Ogni punto è uno Short. Più è in alto, più corre veloce. Premi un punto per aprirlo.</p>
+              <p>Shorts degli ultimi 3 mesi: ogni punto è uno Short. Più è in alto, più corre veloce. Premi un punto per aprirlo.</p>
             </div>
             <div class="legend"><span><i class="round"></i>Uscito nell'ultimo mese</span><span><i class="round old"></i>Più vecchio</span></div>
             <div class="chart" id="chart-speed"></div>
@@ -705,11 +768,11 @@
 
     async function analizza(termine) {
       const ora = Date.now();
-      const dopo = new Date(ora - FINESTRA_GIORNI * GIORNO).toISOString();
 
       // Cerco lo stesso argomento in più modi (più pertinenti, più visti, più nuovi) per trovare più Shorts
       const nomiOrdine = { relevance: 'più pertinenti', viewCount: 'più visti', date: 'più nuovi' };
       const pertinenti = new Set();   // trovati con la ricerca "più pertinenti"
+      const campione = new Set();     // trovati come "più pertinenti" o "più visti" (non solo "più nuovi")
       const ids = [];
       for (const [ordineYT, pagine] of LIVELLI[livello].passaggi) {
         messaggio('Cerco gli Shorts ' + nomiOrdine[ordineYT] + ' su "' + termine + '"…', 'info');
@@ -717,7 +780,7 @@
         for (let i = 0; i < pagine; i++) {
           const par = {
             part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: termine,
-            publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
+            fields: 'nextPageToken,items/id/videoId',
           };
           if (pagina) par.pageToken = pagina;
           const d = await chiama('search', par, 100);
@@ -726,6 +789,7 @@
             if (!id) return;
             if (!ids.includes(id)) ids.push(id);
             if (ordineYT === 'relevance') pertinenti.add(id);
+            if (ordineYT !== 'date') campione.add(id);
           });
           pagina = d.nextPageToken;
           if (!pagina) break;
@@ -774,6 +838,7 @@
           return {
             id: v.id,
             base: pertinenti.has(v.id),
+            campione: campione.has(v.id),
             titolo: decodifica(v.snippet.title),
             canale: decodifica(v.snippet.channelTitle),
             canaleId: v.snippet.channelId,
@@ -822,7 +887,7 @@
       }
 
       // 2. Freschezza: tra i 20 video più visti, quanti sono dell'ultimo mese
-      const top = [...video].sort((a, b) => b.views - a.views).slice(0, 20);
+      const top = video.filter((v) => v.giorni <= FINESTRA_GIORNI).sort((a, b) => b.views - a.views).slice(0, 20);
       if (top.length >= 5) {
         const nuovi = top.filter((v) => v.giorni <= 28).length;
         const quota = nuovi / top.length;
@@ -968,6 +1033,12 @@
       n.textContent = t;
       return n;
     }
+    // quante righe orizzontali usare perché i numeri sull'asse siano tondi
+    function passiAsse(max) {
+      const base = Math.pow(10, Math.max(0, Math.floor(Math.log10(max)) - 1));
+      for (const n of [4, 5, 2]) { const q = max / n / base; if (Math.abs(q - Math.round(q)) < 1e-9) return n; }
+      return max <= 4 ? Math.max(1, Math.round(max)) : 4;
+    }
     function scalaBella(max) {
       if (max <= 0) return 4;
       const pot = Math.pow(10, Math.floor(Math.log10(max)));
@@ -1019,7 +1090,7 @@
     // ---------- Grafico 2: velocità (punti) ----------
     function graficoVelocita(box, video) {
       box.replaceChildren();
-      const dati = video.filter((v) => v.vpd > 0);
+      const dati = video.filter((v) => v.vpd > 0 && v.giorni <= FINESTRA_GIORNI);
       if (!dati.length) {
         const p = document.createElement('p'); p.className = 'empty-chart';
         p.textContent = 'Nessun video con visualizzazioni da mostrare.'; box.append(p); return;
@@ -1310,6 +1381,167 @@
       return { aggiornato: new Date().toISOString(), ambito, shortsAnalizzati: video.length, giorniIndietro: GIORNI_SCOPRI, temi: top };
     }
 
+    // ---------- Trend: sta esplodendo o è passato? ----------
+    const K_PERIODO = 'radar-periodo';
+    const PERIODI = {
+      giorni:    { conf: 7,  nome: 'ultimi 7 giorni',     prima: '7 giorni prima' },
+      settimane: { conf: 28, nome: 'ultime 4 settimane',  prima: '4 settimane prima' },
+      mesi:      { conf: 90, nome: 'ultimi 3 mesi',       prima: '3 mesi prima' },
+    };
+    let periodo = leggi(K_PERIODO, 'settimane');
+    if (!PERIODI[periodo]) periodo = 'settimane';
+    const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+
+    // Divide il tempo in colonne: 14 giorni, 12 settimane o 12 mesi del calendario
+    function colonneTempo(tipo) {
+      const ora = new Date();
+      const out = [];
+      if (tipo === 'mesi') {
+        for (let i = 11; i >= 0; i--) {
+          const inizio = new Date(ora.getFullYear(), ora.getMonth() - i, 1);
+          const fine = new Date(ora.getFullYear(), ora.getMonth() - i + 1, 1);
+          out.push({ inizio: inizio.getTime(), fine: Math.min(fine.getTime(), ora.getTime() + 1), inCorso: i === 0,
+            etichetta: MESI[inizio.getMonth()] + ' \'' + String(inizio.getFullYear()).slice(2),
+            nome: inizio.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) });
+        }
+      } else {
+        const passo = tipo === 'giorni' ? GIORNO : 7 * GIORNO;
+        const quante = tipo === 'giorni' ? 14 : 12;
+        for (let i = quante - 1; i >= 0; i--) {
+          const fine = ora.getTime() - i * passo + 1, inizio = fine - passo;
+          const d = new Date(inizio + 1);
+          out.push({ inizio, fine, inCorso: false,
+            etichetta: tipo === 'giorni' ? d.getDate() + '/' + (d.getMonth() + 1) : dataBreve(d),
+            nome: tipo === 'giorni' ? d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
+              : 'settimana dal ' + dataBreve(d) + ' al ' + dataBreve(new Date(fine - 1)) });
+        }
+      }
+      return out;
+    }
+    function variazione(ora, prima) {
+      if (!prima && !ora) return { testo: 'Nessun dato', cls: 'flat', perc: 0 };
+      if (!prima) return { testo: '↗ Nuovo', cls: 'up', perc: 100 };
+      const perc = Math.round((ora - prima) / prima * 100);
+      if (perc >= 10) return { testo: '↗ +' + nf.format(perc) + '%', cls: 'up', perc };
+      if (perc <= -10) return { testo: '↘ ' + nf.format(perc) + '%', cls: 'down', perc };
+      return { testo: '→ ' + (perc > 0 ? '+' : '') + perc + '% (stabile)', cls: 'flat', perc };
+    }
+
+    function mostraTrend(video) {
+      const P = PERIODI[periodo];
+      document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.periodo === periodo)));
+      // uso gli Shorts trovati come "più pertinenti" o "più visti": quelli trovati solo come "più nuovi" gonfierebbero il periodo recente
+      const dati = video.filter((v) => v.campione);
+      const ora = Date.now(), confine = ora - P.conf * GIORNO, inizioPrima = confine - P.conf * GIORNO;
+      const recenti = dati.filter((v) => v.data > confine);
+      const prima = dati.filter((v) => v.data > inizioPrima && v.data <= confine);
+      const somma = (l) => l.reduce((a, v) => a + v.views, 0);
+      const canaliDi = (l) => new Set(l.map((v) => v.canaleId)).size;
+
+      // canali di cui il primo Short trovato è nel periodo recente
+      const primoShort = new Map();
+      video.forEach((v) => { if (!primoShort.has(v.canaleId) || primoShort.get(v.canaleId) > v.data) primoShort.set(v.canaleId, v.data); });
+      const canaliTotali = primoShort.size;
+      const arrivati = [...primoShort.values()].filter((d) => d > confine).length;
+
+      const vS = variazione(recenti.length, prima.length);
+      const vV = variazione(somma(recenti), somma(prima));
+      const vC = variazione(canaliDi(recenti), canaliDi(prima));
+      const kpis = [
+        { nome: 'Shorts pubblicati', valore: nf.format(recenti.length), chg: vS, sotto: 'contro ' + nf.format(prima.length) + ' nei ' + P.prima },
+        { nome: 'Visualizzazioni totali', valore: nf.format(somma(recenti)), chg: vV, sotto: 'contro ' + nf.format(somma(prima)) + ' nei ' + P.prima },
+        { nome: 'Canali attivi', valore: nf.format(canaliDi(recenti)), chg: vC, sotto: 'contro ' + nf.format(canaliDi(prima)) + ' nei ' + P.prima },
+        { nome: 'Canali trovati', valore: nf.format(canaliTotali), chg: null,
+          sotto: 'in tutta la ricerca, di qualsiasi periodo · ' + arrivati + (arrivati === 1 ? ' è arrivato' : ' sono arrivati') + ' negli ' + P.nome },
+      ];
+      const box = $('kpis');
+      box.replaceChildren();
+      kpis.forEach((k) => {
+        const d = document.createElement('div'); d.className = 'kpi';
+        const top = document.createElement('div'); top.className = 'kpi-top';
+        const l = document.createElement('span'); l.className = 'label'; l.textContent = k.nome;
+        top.append(l);
+        if (k.chg) { const c = document.createElement('span'); c.className = 'chg ' + k.chg.cls; c.textContent = k.chg.testo; top.append(c); }
+        const v = document.createElement('div'); v.className = 'v num'; v.textContent = k.valore;
+        d.append(top, v, paragrafo(k.sotto));
+        box.append(d);
+      });
+
+      // risposta semplice alla domanda del titolo
+      const ans = $('trend-answer');
+      let r;
+      if (recenti.length + prima.length < 4) r = { cls: '', t: 'Troppo pochi Shorts in questo periodo per dirlo. Prova un periodo più lungo.' };
+      else if (vS.perc >= 20 && vC.perc >= 0) r = { cls: 'good', t: 'Sta esplodendo: negli ' + P.nome + ' escono più Shorts e ci sono più canali di prima.' };
+      else if (vS.perc <= -20 && vC.perc <= 0) r = { cls: 'bad', t: 'Sta calando: negli ' + P.nome + ' escono meno Shorts e ci sono meno canali di prima.' };
+      else if (vS.perc >= 20) r = { cls: 'good', t: 'In crescita: escono più Shorts, ma da pochi canali.' };
+      else r = { cls: 'warn', t: 'Stabile: negli ' + P.nome + ' l\'attività è simile a prima.' };
+      ans.className = 'trend-answer ' + r.cls;
+      ans.textContent = r.t;
+      $('trend-note').textContent = 'Basato su ' + nf.format(dati.length) + ' Shorts trovati (i più pertinenti e i più visti), di qualsiasi periodo.' +
+        (periodo === 'mesi' ? ' L\'ultima colonna è il mese in corso, quindi è più bassa: la mostro più chiara.' : '');
+
+      // grafici
+      const colonne = colonneTempo(periodo).map((c) => {
+        const dentro = dati.filter((v) => v.data >= c.inizio && v.data < c.fine);
+        return Object.assign(c, { shorts: dentro.length, views: somma(dentro), canali: canaliDi(dentro) });
+      });
+      const media3 = colonne.map((c, i) => {
+        const fin = colonne.slice(Math.max(0, i - 2), i + 1);
+        return fin.reduce((a, x) => a + x.shorts, 0) / fin.length;
+      });
+      graficoTempo($('chart-trend-shorts'), colonne.map((c, i) => ({
+        c, valore: c.shorts, linea: media3[i],
+        righe: [c.nome, 'Andamento: ' + nf1.format(media3[i]) + ' Shorts', c.views ? compatto(c.views) + ' visualizzazioni' : ''],
+        titolo: c.shorts + (c.shorts === 1 ? ' Short' : ' Shorts'),
+      })), { altezza: 190, etichette: nf.format });
+      graficoTempo($('chart-trend-views'), colonne.map((c) => ({
+        c, valore: c.views, righe: [c.nome, c.shorts + ' Shorts pubblicati'], titolo: compatto(c.views) + ' visualizzazioni',
+      })), { altezza: 150, etichette: compatto });
+      graficoTempo($('chart-trend-channels'), colonne.map((c) => ({
+        c, valore: c.canali, righe: [c.nome], titolo: c.canali + (c.canali === 1 ? ' canale' : ' canali'),
+      })), { altezza: $('chart-trend-channels').clientWidth < 520 ? 220 : 380, etichette: nf.format });
+    }
+
+    // Grafico a colonne nel tempo, con linea di andamento facoltativa
+    function graficoTempo(box, punti, opz) {
+      box.replaceChildren();
+      const W = Math.max(280, box.clientWidth), H = opz.altezza;
+      const m = { t: 14, r: 4, b: 24, l: 48 };
+      const iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const max = scalaBella(Math.max(...punti.map((p) => Math.max(p.valore, p.linea || 0)), 1));
+      const y = (v) => m.t + ih - (v / max) * ih;
+      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img' }, box);
+      const passi = passiAsse(max);
+      for (let k = 0; k <= passi; k++) {
+        const v = max / passi * k;
+        el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'grid' }, svg);
+        testo(svg, m.l - 6, y(v) + 4, opz.etichette(v), { 'text-anchor': 'end' });
+      }
+      const banda = iw / punti.length, bw = Math.min(34, banda * 0.66);
+      const ogni = banda < 34 ? 3 : banda < 52 ? 2 : 1;
+      const cx = (i) => m.l + banda * i + banda / 2;
+      punti.forEach((p, i) => {
+        const g = el('g', { class: 'bar-g', tabindex: 0 }, svg);
+        if (p.valore > 0) {
+          const top = y(p.valore), h = m.t + ih - top, r = Math.min(4, h, bw / 2), bx = cx(i) - bw / 2;
+          el('path', { class: 'bar' + (p.c.inCorso ? ' partial' : ''), d: 'M' + bx + ',' + (top + h) + 'V' + (top + r) + 'Q' + bx + ',' + top + ' ' + (bx + r) + ',' + top +
+            'H' + (bx + bw - r) + 'Q' + (bx + bw) + ',' + top + ' ' + (bx + bw) + ',' + (top + r) + 'V' + (top + h) + 'Z' }, g);
+        }
+        if ((punti.length - 1 - i) % ogni === 0) testo(svg, cx(i), H - 6, p.c.etichetta, { 'text-anchor': 'middle' });
+        el('rect', { x: cx(i) - banda / 2, y: m.t, width: banda, height: ih, class: 'hit' }, g);
+        const info = (e) => mostraTip(e, p.titolo, p.righe.filter(Boolean));
+        g.addEventListener('pointermove', info);
+        g.addEventListener('focus', info);
+        g.addEventListener('pointerleave', nascondiTip);
+        g.addEventListener('blur', nascondiTip);
+      });
+      if (punti.some((p) => p.linea != null)) {
+        const d = punti.map((p, i) => (i ? 'L' : 'M') + cx(i) + ',' + y(p.linea)).join('');
+        el('path', { d, class: 'line2' }, svg);
+        punti.forEach((p, i) => el('circle', { cx: cx(i), cy: y(p.linea), r: 3, class: 'dot2' }, svg));
+      }
+    }
+
     // ---------- Grafico 4: fasce di visualizzazioni ----------
     const FASCE = [
       { nome: 'Fino a 30k', max: 3e4 },
@@ -1339,7 +1571,7 @@
 
       // titolo dell'asse verticale
       testo(svg, 10, m.t + ih / 2, 'Numero di Shorts', { transform: 'rotate(-90 10 ' + (m.t + ih / 2) + ')', 'text-anchor': 'middle' });
-      const passi = max <= 4 ? max : 4;
+      const passi = passiAsse(max);
       for (let k = 0; k <= passi; k++) {
         const v = max / passi * k;
         el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'grid' }, svg);
@@ -1589,6 +1821,7 @@
       graficoSettimane($('chart-weeks'), settimaneAttuali);
       graficoVelocita($('chart-speed'), videoAttuali);
       graficoFasce($('chart-size'), videoAttuali);
+      mostraTrend(videoAttuali);
     }
     function mostraRisultati() {
       settimaneAttuali = settimane(videoAttuali);
@@ -1637,7 +1870,7 @@
       try {
         const video = await analizza(termine);
         if (!video.length) {
-          messaggio('Non ho trovato Shorts usciti negli ultimi 3 mesi per "' + termine + '". Prova con altre parole.', 'info');
+          messaggio('Non ho trovato Shorts per "' + termine + '". Prova con altre parole.', 'info');
           return;
         }
         videoAttuali = video;
@@ -1656,6 +1889,12 @@
     document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
       ordine = b.dataset.sort;
       tabella();
+    }));
+
+    document.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => {
+      periodo = b.dataset.periodo;
+      scrivi(K_PERIODO, periodo);
+      if (videoAttuali.length) mostraTrend(videoAttuali);
     }));
 
     $('discover-more').addEventListener('click', () => { mostraTutti = !mostraTutti; mostraScoperte(); });
