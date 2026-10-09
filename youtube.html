@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cerca Video</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #616e7c;
+      --border: #dde2e8;
+      --accent: #e11d48;
+      --error-bg: #fde8ec;
+      --error-text: #9f1239;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111418;
+        --card: #1b2027;
+        --text: #e4e7eb;
+        --muted: #9aa5b1;
+        --border: #2d343d;
+        --accent: #fb7185;
+        --error-bg: #3b1520;
+        --error-text: #fda4af;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { margin: 0 0 4px; font-size: 1.75rem; }
+    .sub { margin: 0 0 20px; color: var(--muted); }
+    form { display: flex; gap: 8px; margin-bottom: 12px; }
+    input {
+      flex: 1;
+      min-width: 0;
+      padding: 12px 14px;
+      font-size: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 1rem;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:disabled { opacity: .6; cursor: default; }
+    .link-btn {
+      background: none;
+      color: var(--muted);
+      padding: 0;
+      font-size: .9rem;
+      text-decoration: underline;
+    }
+    details {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+    }
+    summary { cursor: pointer; font-weight: 600; }
+    details p { color: var(--muted); font-size: .9rem; margin: 10px 0; }
+    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; }
+    .msg.error { background: var(--error-bg); color: var(--error-text); }
+    .msg.info { color: var(--muted); padding-left: 0; }
+    ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+    li a {
+      display: flex;
+      gap: 14px;
+      padding: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: inherit;
+      text-decoration: none;
+    }
+    li a:hover { border-color: var(--accent); }
+    li img {
+      width: 168px;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: 8px;
+      flex-shrink: 0;
+      background: var(--border);
+    }
+    .info { min-width: 0; }
+    .title { font-weight: 600; margin: 0 0 4px; line-height: 1.3; }
+    .meta { color: var(--muted); font-size: .85rem; margin: 0 0 6px; }
+    .desc {
+      color: var(--muted);
+      font-size: .85rem;
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    #altri { display: block; margin: 20px auto 0; }
+    @media (max-width: 560px) {
+      li a { flex-direction: column; }
+      li img { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Cerca Video</h1>
+    <p class="sub">Scrivi cosa cerchi e ti mostro i video trovati su YouTube.</p>
+
+    <details id="chiave-box">
+      <summary>La tua chiave YouTube</summary>
+      <p>Per cercare su YouTube serve una "chiave" personale (si chiama API key).
+        Si ottiene gratis da Google Cloud Console. Viene salvata solo nel tuo browser.</p>
+      <form id="chiave-form">
+        <input id="chiave" type="password" placeholder="Incolla qui la tua chiave" autocomplete="off">
+        <button type="submit">Salva</button>
+      </form>
+      <button id="cancella-chiave" class="link-btn" type="button">Cancella la chiave salvata</button>
+    </details>
+
+    <form id="cerca-form">
+      <input id="cerca" type="search" placeholder="Cosa vuoi cercare?" required>
+      <button id="cerca-btn" type="submit">Cerca</button>
+    </form>
+
+    <div id="messaggio"></div>
+    <ul id="risultati"></ul>
+    <button id="altri" type="button" hidden>Mostra altri video</button>
+  </div>
+
+  <script>
+    const CHIAVE_SALVATA = 'yt-api-key';
+    const PER_PAGINA = 12;
+
+    const $ = (id) => document.getElementById(id);
+    let ricercaAttuale = '';
+    let prossimaPagina = null;
+
+    function leggiChiave() {
+      try { return localStorage.getItem(CHIAVE_SALVATA) || ''; } catch (e) { return ''; }
+    }
+    function salvaChiave(valore) {
+      try {
+        if (valore) localStorage.setItem(CHIAVE_SALVATA, valore);
+        else localStorage.removeItem(CHIAVE_SALVATA);
+      } catch (e) { /* il browser non permette di salvare: si usa solo per questa visita */ }
+    }
+
+    let chiave = leggiChiave();
+    $('chiave').value = chiave;
+    if (!chiave) $('chiave-box').open = true;
+
+    function mostraMessaggio(testo, tipo) {
+      const box = $('messaggio');
+      box.textContent = testo;
+      box.className = testo ? 'msg ' + tipo : '';
+    }
+
+    // YouTube manda i titoli con simboli codificati (es. &#39;): li trasformo in testo normale
+    function decodifica(testo) {
+      const t = document.createElement('textarea');
+      t.innerHTML = testo || '';
+      return t.value;
+    }
+
+    function formattaData(iso) {
+      try {
+        return new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch (e) { return ''; }
+    }
+
+    function creaVideo(item) {
+      const s = item.snippet;
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(item.id.videoId);
+      a.target = '_blank';
+      a.rel = 'noopener';
+
+      const img = document.createElement('img');
+      img.src = (s.thumbnails.medium || s.thumbnails.default).url;
+      img.alt = '';
+      img.loading = 'lazy';
+
+      const info = document.createElement('div');
+      info.className = 'info';
+      const titolo = document.createElement('p');
+      titolo.className = 'title';
+      titolo.textContent = decodifica(s.title);
+      const meta = document.createElement('p');
+      meta.className = 'meta';
+      meta.textContent = decodifica(s.channelTitle) + ' · ' + formattaData(s.publishedAt);
+      const desc = document.createElement('p');
+      desc.className = 'desc';
+      desc.textContent = decodifica(s.description);
+
+      info.append(titolo, meta, desc);
+      a.append(img, info);
+      li.append(a);
+      return li;
+    }
+
+    async function cerca(nuovaRicerca) {
+      if (!chiave) {
+        $('chiave-box').open = true;
+        mostraMessaggio('Prima inserisci la tua chiave YouTube qui sopra.', 'error');
+        return;
+      }
+
+      const params = new URLSearchParams({
+        part: 'snippet',
+        type: 'video',
+        maxResults: PER_PAGINA,
+        q: ricercaAttuale,
+        key: chiave,
+      });
+      if (!nuovaRicerca && prossimaPagina) params.set('pageToken', prossimaPagina);
+
+      $('cerca-btn').disabled = true;
+      $('altri').disabled = true;
+      if (nuovaRicerca) {
+        $('risultati').replaceChildren();
+        $('altri').hidden = true;
+      }
+      mostraMessaggio('Sto cercando…', 'info');
+
+      try {
+        const risposta = await fetch('https://www.googleapis.com/youtube/v3/search?' + params);
+        const dati = await risposta.json();
+        if (!risposta.ok) {
+          const motivo = dati.error && dati.error.message ? dati.error.message : 'errore sconosciuto';
+          throw new Error(motivo);
+        }
+
+        const video = dati.items || [];
+        video.forEach((item) => $('risultati').append(creaVideo(item)));
+        prossimaPagina = dati.nextPageToken || null;
+        $('altri').hidden = !prossimaPagina;
+
+        const totale = $('risultati').children.length;
+        mostraMessaggio(
+          totale ? 'Ho trovato ' + totale + ' video per "' + ricercaAttuale + '".'
+                 : 'Nessun video trovato per "' + ricercaAttuale + '".',
+          'info'
+        );
+      } catch (err) {
+        mostraMessaggio('Non sono riuscito a cercare. Motivo: ' + err.message, 'error');
+      } finally {
+        $('cerca-btn').disabled = false;
+        $('altri').disabled = false;
+      }
+    }
+
+    $('chiave-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      chiave = $('chiave').value.trim();
+      salvaChiave(chiave);
+      $('chiave-box').open = !chiave;
+      mostraMessaggio(chiave ? 'Chiave salvata. Ora puoi cercare.' : '', 'info');
+    });
+
+    $('cancella-chiave').addEventListener('click', () => {
+      chiave = '';
+      $('chiave').value = '';
+      salvaChiave('');
+      mostraMessaggio('Chiave cancellata.', 'info');
+    });
+
+    $('cerca-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      ricercaAttuale = $('cerca').value.trim();
+      if (!ricercaAttuale) return;
+      prossimaPagina = null;
+      cerca(true);
+    });
+
+    $('altri').addEventListener('click', () => cerca(false));
+  </script>
+</body>
+</html>
