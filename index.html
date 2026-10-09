@@ -3,293 +3,969 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cerca Video</title>
+  <title>Radar Nicchie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
   <style>
+    /* Layout: una colonna centrale; in cima il termometro, poi i grafici in griglia, in fondo la tabella dei video */
     :root {
-      --bg: #f6f7f9;
-      --card: #ffffff;
-      --text: #1f2933;
-      --muted: #616e7c;
-      --border: #dde2e8;
-      --accent: #e11d48;
-      --error-bg: #fde8ec;
-      --error-text: #9f1239;
+      --bg: #f5f6f8;
+      --surface: #ffffff;
+      --ink: #14161a;
+      --ink-2: #4a505a;
+      --muted: #737a85;
+      --line: #e3e6ea;
+      --accent: #2a78d6;
+      --btn-bg: #14161a;
+      --btn-ink: #ffffff;
+      --good: #0ca30c;
+      --warn: #c98500;
+      --bad: #d03b3b;
+      --error-bg: #fdecec;
+      --error-ink: #9b2222;
+      --font: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
     }
     @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #111418;
-        --card: #1b2027;
-        --text: #e4e7eb;
-        --muted: #9aa5b1;
-        --border: #2d343d;
-        --accent: #fb7185;
-        --error-bg: #3b1520;
-        --error-text: #fda4af;
+      :root:not([data-theme="light"]) {
+        --bg: #0f1113; --surface: #181b1f; --ink: #f1f2f4; --ink-2: #b9bec6; --muted: #8a919b;
+        --line: #2a2f36; --accent: #3987e5; --btn-bg: #f1f2f4; --btn-ink: #0f1113;
+        --warn: #fab219; --error-bg: #3a1818; --error-ink: #f3a5a5; color-scheme: dark;
       }
     }
+    :root[data-theme="dark"] {
+      --bg: #0f1113; --surface: #181b1f; --ink: #f1f2f4; --ink-2: #b9bec6; --muted: #8a919b;
+      --line: #2a2f36; --accent: #3987e5; --btn-bg: #f1f2f4; --btn-ink: #0f1113;
+      --warn: #fab219; --error-bg: #3a1818; --error-ink: #f3a5a5; color-scheme: dark;
+    }
+
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       background: var(--bg);
-      color: var(--text);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 15px;
+      line-height: 1.5;
     }
-    .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 48px; }
-    h1 { margin: 0 0 4px; font-size: 1.75rem; }
-    .sub { margin: 0 0 20px; color: var(--muted); }
-    form { display: flex; gap: 8px; margin-bottom: 12px; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 16px 64px; display: grid; gap: 24px; }
+    .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    h1, h2, h3 { margin: 0; text-wrap: balance; }
+    h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+    h2 { font-size: 1.05rem; font-weight: 600; }
+    p { margin: 0; }
+    .muted { color: var(--muted); }
+    .label {
+      font-size: .72rem; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--muted); font-weight: 500;
+    }
+
+    /* Testata */
+    header { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; justify-content: space-between; }
+    header .sub { color: var(--ink-2); margin-top: 2px; }
+    .quota {
+      min-width: 0; width: 280px; max-width: 100%;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+      padding: 12px 14px; display: grid; gap: 6px;
+    }
+    .quota-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .quota-num { font-size: .95rem; }
+    .meter { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+    .meter > span { display: block; height: 100%; background: var(--accent); border-radius: 3px; width: 0; transition: width .4s; }
+    .meter.alto > span { background: var(--warn); }
+    .meter.pieno > span { background: var(--bad); }
+    .quota small { color: var(--muted); font-size: .78rem; }
+
+    /* Ricerca */
+    .search { display: grid; gap: 10px; }
+    .search form { display: flex; gap: 8px; }
     input {
-      flex: 1;
-      min-width: 0;
-      padding: 12px 14px;
-      font-size: 1rem;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--card);
-      color: var(--text);
+      flex: 1; min-width: 0; font: inherit; font-size: 1rem;
+      padding: 13px 16px; border-radius: 12px;
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    }
+    input:focus-visible, button:focus-visible, a:focus-visible, th button:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px;
     }
     button {
-      border: 0;
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 1rem;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-      white-space: nowrap;
+      font: inherit; font-weight: 600; border: 0; border-radius: 12px; cursor: pointer;
+      padding: 12px 20px; background: var(--btn-bg); color: var(--btn-ink); white-space: nowrap;
     }
-    button:disabled { opacity: .6; cursor: default; }
-    .link-btn {
-      background: none;
-      color: var(--muted);
-      padding: 0;
-      font-size: .9rem;
-      text-decoration: underline;
+    button:disabled { opacity: .5; cursor: default; }
+    .btn-light { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+    .btn-link { background: none; color: var(--muted); padding: 0; font-weight: 400; text-decoration: underline; border-radius: 4px; }
+    .search-note { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; color: var(--muted); }
+
+    details.key {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
     }
-    details {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 20px;
+    details.key summary { cursor: pointer; font-weight: 500; }
+    details.key .inner { display: grid; gap: 10px; margin-top: 10px; }
+    details.key p { font-size: .88rem; color: var(--ink-2); }
+    details.key form { display: flex; gap: 8px; }
+    details.key input { padding: 10px 14px; font-size: .95rem; }
+
+    .msg { padding: 12px 16px; border-radius: 12px; }
+    .msg.error { background: var(--error-bg); color: var(--error-ink); }
+    .msg.info { color: var(--ink-2); padding: 0 2px; }
+
+    /* Come funziona (stato iniziale) */
+    .intro { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .intro div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 4px; align-content: start; }
+    .intro p { color: var(--ink-2); font-size: .9rem; }
+
+    /* Termometro */
+    .thermo {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+      padding: 24px; display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center;
     }
-    summary { cursor: pointer; font-weight: 600; }
-    details p { color: var(--muted); font-size: .9rem; margin: 10px 0; }
-    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; }
-    .msg.error { background: var(--error-bg); color: var(--error-text); }
-    .msg.info { color: var(--muted); padding-left: 0; }
-    ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-    li a {
-      display: flex;
-      gap: 14px;
-      padding: 10px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      color: inherit;
-      text-decoration: none;
+    .score { display: grid; gap: 8px; justify-items: start; }
+    .score-big { font-size: 4.2rem; font-weight: 700; line-height: 1; letter-spacing: -0.04em; }
+    .score-big small { font-size: 1.1rem; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; font-weight: 600;
+      padding: 4px 10px 4px 8px; border-radius: 999px; border: 1px solid var(--line);
     }
-    li a:hover { border-color: var(--accent); }
-    li img {
-      width: 168px;
-      aspect-ratio: 16 / 9;
-      object-fit: cover;
-      border-radius: 8px;
-      flex-shrink: 0;
-      background: var(--border);
+    .pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .pill.good { color: var(--good); }
+    .pill.warn { color: var(--warn); }
+    .pill.bad { color: var(--bad); }
+    .pill.neutral { color: var(--muted); }
+    .signals { display: grid; gap: 14px; min-width: 0; }
+    .signal { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+    .signal .meter { grid-column: 1 / -1; }
+    .signal p { grid-column: 1 / -1; font-size: .85rem; color: var(--ink-2); }
+    .signal strong { font-weight: 600; }
+
+    /* Grafici */
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+      padding: 20px; display: grid; gap: 12px; align-content: start; min-width: 0;
     }
-    .info { min-width: 0; }
-    .title { font-weight: 600; margin: 0 0 4px; line-height: 1.3; }
-    .meta { color: var(--muted); font-size: .85rem; margin: 0 0 6px; }
-    .desc {
-      color: var(--muted);
-      font-size: .85rem;
-      margin: 0;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    .card.wide { grid-column: 1 / -1; }
+    .card-head { display: grid; gap: 2px; }
+    .card-head p { font-size: .87rem; color: var(--ink-2); }
+    .chart { width: 100%; min-width: 0; }
+    .chart svg { display: block; width: 100%; overflow: visible; }
+    .chart text { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+    .chart .val { fill: var(--ink-2); font-weight: 500; }
+    .chart .grid { stroke: var(--line); stroke-width: 1; }
+    .chart .bar, .chart .dot { fill: var(--accent); }
+    .chart .dot { pointer-events: none; }
+    .chart .old { opacity: .4; }
+    .chart .hit { fill: transparent; cursor: pointer; }
+    .chart .hit:hover + .dot, .chart .hit:focus + .dot { stroke: var(--ink); stroke-width: 2; }
+    .chart .bar-g:hover .bar { opacity: 1; filter: brightness(1.12); }
+    .chart .mark-line { stroke: var(--muted); stroke-dasharray: 3 4; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--ink-2); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 10px; height: 10px; border-radius: 2px; background: var(--accent); display: inline-block; }
+    .legend i.round { border-radius: 50%; }
+    .legend i.old { opacity: .4; }
+    .empty-chart { color: var(--muted); font-size: .9rem; padding: 24px 0; }
+
+    /* Classifica piccoli canali */
+    .rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+    .rank a {
+      display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; color: inherit; text-decoration: none;
+      padding: 6px 8px; margin: 0 -8px; border-radius: 8px;
     }
-    #altri { display: block; margin: 20px auto 0; }
-    @media (max-width: 560px) {
-      li a { flex-direction: column; }
-      li img { width: 100%; }
+    .rank a:hover { background: var(--bg); }
+    .rank .t { font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rank .x { font-weight: 600; }
+    .rank .c { font-size: .8rem; color: var(--muted); grid-column: 1 / -1; }
+    .rank .track { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+    .rank .track span { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+
+    /* Tabella video */
+    .table-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .actions button { padding: 9px 14px; font-size: .88rem; }
+    .table-box { overflow-x: auto; margin: 0 -20px; padding: 0 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 640px; }
+    th { text-align: left; font-weight: 500; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th.r, td.r { text-align: right; }
+    th button { background: none; color: inherit; padding: 0; font-weight: 500; font-size: inherit; border-radius: 4px; }
+    th button[aria-sort]::after { content: " ↓"; }
+    td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    .vid { display: flex; gap: 12px; align-items: center; min-width: 0; }
+    .vid img { width: 72px; aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; background: var(--line); flex-shrink: 0; }
+    .vid a { color: var(--ink); text-decoration: none; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .vid a:hover { text-decoration: underline; }
+    .vid small { color: var(--muted); display: block; }
+
+    /* Tooltip */
+    .tip {
+      position: fixed; z-index: 10; pointer-events: none; max-width: 260px;
+      background: var(--ink); color: var(--bg); border-radius: 8px; padding: 8px 10px;
+      font-size: .8rem; line-height: 1.35; box-shadow: 0 6px 20px rgba(0,0,0,.18);
+    }
+    .tip b { display: block; font-size: .95rem; font-family: var(--mono); }
+
+    @media (max-width: 760px) {
+      .charts { grid-template-columns: 1fr; }
+      .thermo { grid-template-columns: 1fr; gap: 20px; padding: 20px; }
+      .quota { width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .search form, details.key form { flex-direction: column; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .meter > span { transition: none; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Cerca Video</h1>
-    <p class="sub">Scrivi cosa cerchi e ti mostro i video trovati su YouTube.</p>
+    <header>
+      <div>
+        <h1>Radar Nicchie</h1>
+        <p class="sub">Scrivi una nicchia e scopri se su YouTube sta diventando virale.</p>
+      </div>
+      <div class="quota" aria-live="polite">
+        <div class="quota-top">
+          <span class="label">Crediti API di oggi</span>
+          <span class="quota-num num" id="quota-num">0 / 10.000</span>
+        </div>
+        <div class="meter" id="quota-meter"><span></span></div>
+        <small id="quota-note">Circa 48 analisi disponibili · si ricarica ogni mattina verso le 9</small>
+      </div>
+    </header>
 
-    <details id="chiave-box">
-      <summary>La tua chiave YouTube</summary>
-      <p>Per cercare su YouTube serve una "chiave" personale (si chiama API key).
-        Si ottiene gratis da Google Cloud Console. Viene salvata solo nel tuo browser.</p>
-      <form id="chiave-form">
-        <input id="chiave" type="password" placeholder="Incolla qui la tua chiave" autocomplete="off">
-        <button type="submit">Salva</button>
+    <section class="search">
+      <details class="key" id="key-box">
+        <summary id="key-summary">La tua chiave YouTube</summary>
+        <div class="inner">
+          <p>Serve una chiave personale di YouTube (API key), gratis da Google Cloud Console.
+            Resta salvata solo in questo browser.</p>
+          <form id="key-form">
+            <input id="key-input" type="password" placeholder="Incolla qui la tua chiave" autocomplete="off">
+            <button type="submit">Salva</button>
+          </form>
+          <div><button class="btn-link" id="key-clear" type="button">Cancella la chiave salvata</button></div>
+        </div>
+      </details>
+
+      <form id="search-form">
+        <input id="search-input" type="search" placeholder="Es. ricette air fryer, allenamento a casa…" required>
+        <button id="search-btn" type="submit">Analizza</button>
       </form>
-      <button id="cancella-chiave" class="link-btn" type="button">Cancella la chiave salvata</button>
-    </details>
+      <div class="search-note">
+        <span>Analizzo i 100 video più pertinenti usciti negli ultimi 3 mesi.</span>
+        <span>Ogni analisi usa circa 205 crediti.</span>
+      </div>
+    </section>
 
-    <form id="cerca-form">
-      <input id="cerca" type="search" placeholder="Cosa vuoi cercare?" required>
-      <button id="cerca-btn" type="submit">Cerca</button>
-    </form>
+    <div id="msg" hidden></div>
 
-    <div id="messaggio"></div>
-    <ul id="risultati"></ul>
-    <button id="altri" type="button" hidden>Mostra altri video</button>
+    <section class="intro" id="intro">
+      <div><span class="label">Termometro</span><h2>Un voto da 0 a 100</h2><p>Riassume in un numero se la nicchia sta crescendo.</p></div>
+      <div><span class="label">Settimane</span><h2>Quanti video escono</h2><p>Se ogni settimana escono più video, l'argomento si sta scaldando.</p></div>
+      <div><span class="label">Velocità</span><h2>Visualizzazioni al giorno</h2><p>Video nuovi che corrono veloci sono il segnale che è caldo adesso.</p></div>
+      <div><span class="label">Piccoli canali</span><h2>Chi fa il botto</h2><p>Canali piccoli con tante visualizzazioni: è l'argomento che tira.</p></div>
+    </section>
+
+    <div id="results" hidden>
+      <div style="display:grid; gap:16px">
+        <section class="thermo">
+          <div class="score">
+            <span class="label">Termometro viralità</span>
+            <div class="score-big num"><span id="score">0</span><small>/100</small></div>
+            <span class="pill neutral" id="score-pill">—</span>
+          </div>
+          <div class="signals" id="signals"></div>
+        </section>
+
+        <div class="charts">
+          <section class="card">
+            <div class="card-head">
+              <span class="label">1 · Settimane</span>
+              <h2>Video usciti ogni settimana</h2>
+              <p>Ultime 12 settimane. Se le colonne a destra sono più alte, la nicchia cresce.</p>
+            </div>
+            <div class="legend"><span><i></i>Ultime 4 settimane</span><span><i class="old"></i>Settimane prima</span></div>
+            <div class="chart" id="chart-weeks"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">2 · Velocità</span>
+              <h2>Visualizzazioni al giorno di ogni video</h2>
+              <p>Ogni punto è un video. Più è in alto, più corre veloce. Premi un punto per aprirlo.</p>
+            </div>
+            <div class="legend"><span><i class="round"></i>Uscito nell'ultimo mese</span><span><i class="round old"></i>Più vecchio</span></div>
+            <div class="chart" id="chart-speed"></div>
+          </section>
+
+          <section class="card wide">
+            <div class="card-head">
+              <span class="label">3 · Piccoli canali</span>
+              <h2>Video con molte più visualizzazioni che iscritti</h2>
+              <p>"×10" vuol dire che il video ha 10 volte le visualizzazioni rispetto agli iscritti del canale.</p>
+            </div>
+            <ol class="rank" id="rank"></ol>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="table-head">
+            <div class="card-head">
+              <span class="label">Elenco completo</span>
+              <h2 id="table-title">Tutti i video trovati</h2>
+            </div>
+            <div class="actions">
+              <button id="dl-current" type="button">Scarica questa ricerca</button>
+              <button id="dl-all" class="btn-light" type="button">Scarica tutte le ricerche (0)</button>
+              <button id="clear-all" class="btn-light" type="button">Svuota archivio</button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:.85rem">Il file si apre con Excel o Fogli Google. Premi i titoli delle colonne per ordinare.</p>
+          <div class="table-box">
+            <table>
+              <thead>
+                <tr>
+                  <th>Video</th>
+                  <th><button type="button" data-sort="data">Uscito</button></th>
+                  <th class="r"><button type="button" data-sort="views">Visualizzazioni</button></th>
+                  <th class="r"><button type="button" data-sort="vpd">Al giorno</button></th>
+                  <th class="r"><button type="button" data-sort="rapporto">× iscritti</button></th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
 
+  <div class="tip" id="tip" hidden></div>
+
   <script>
-    const CHIAVE_SALVATA = 'yt-api-key';
-    const PER_PAGINA = 12;
+    // ---------- Impostazioni ----------
+    const GIORNO = 86400000;
+    const FINESTRA_GIORNI = 84;          // 12 settimane
+    const PAGINE_RICERCA = 2;            // 2 x 50 = 100 video
+    const CREDITI_GIORNO = 10000;        // limite gratuito di YouTube
+    const COSTO_ANALISI = 205;
+    const K_CHIAVE = 'yt-api-key';
+    const K_CREDITI = 'radar-crediti';
+    const K_ARCHIVIO = 'radar-archivio';
+    const SVG = 'http://www.w3.org/2000/svg';
 
     const $ = (id) => document.getElementById(id);
-    let ricercaAttuale = '';
-    let prossimaPagina = null;
 
-    function leggiChiave() {
-      try { return localStorage.getItem(CHIAVE_SALVATA) || ''; } catch (e) { return ''; }
+    // ---------- Memoria del browser (sempre protetta) ----------
+    function leggi(k, def) {
+      try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
     }
-    function salvaChiave(valore) {
-      try {
-        if (valore) localStorage.setItem(CHIAVE_SALVATA, valore);
-        else localStorage.removeItem(CHIAVE_SALVATA);
-      } catch (e) { /* il browser non permette di salvare: si usa solo per questa visita */ }
+    function scrivi(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* memoria piena o bloccata */ }
+    }
+    function cancella(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+    // ---------- Formattazione numeri ----------
+    const nf = new Intl.NumberFormat('it-IT');
+    const nf1 = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 1 });
+    function compatto(n) {
+      if (n == null || !isFinite(n)) return '—';
+      const a = Math.abs(n);
+      if (a >= 1e9) return nf1.format(n / 1e9) + ' Mld';
+      if (a >= 1e6) return nf1.format(n / 1e6) + ' Mln';
+      if (a >= 1e4) return nf.format(Math.round(n / 1e3)) + 'k';
+      if (a >= 1e3) return nf1.format(n / 1e3) + 'k';
+      if (a >= 10) return nf.format(Math.round(n));
+      return nf1.format(n);
+    }
+    function dataBreve(d) {
+      return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+    }
+    function decodifica(s) {
+      const t = document.createElement('textarea');
+      t.innerHTML = s || '';
+      return t.value;
+    }
+    function durataSecondi(iso) {
+      const m = /P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || '');
+      if (!m) return null;
+      return (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0);
+    }
+    function durataTesto(sec) {
+      if (sec == null) return '';
+      const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+      const p = (x) => String(x).padStart(2, '0');
+      return h ? h + ':' + p(m) + ':' + p(s) : m + ':' + p(s);
     }
 
-    let chiave = leggiChiave();
-    $('chiave').value = chiave;
-    if (!chiave) $('chiave-box').open = true;
+    // ---------- Contatore crediti ----------
+    // YouTube azzera i crediti a mezzanotte, ora della California
+    function giornoYouTube() {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+    }
+    function creditiUsati() {
+      const c = leggi(K_CREDITI, null);
+      return c && c.giorno === giornoYouTube() ? c.usati : 0;
+    }
+    function aggiungiCrediti(n) {
+      scrivi(K_CREDITI, { giorno: giornoYouTube(), usati: creditiUsati() + n });
+      mostraCrediti();
+    }
+    function mostraCrediti() {
+      const usati = creditiUsati();
+      const perc = Math.min(100, usati / CREDITI_GIORNO * 100);
+      $('quota-num').textContent = nf.format(usati) + ' / ' + nf.format(CREDITI_GIORNO);
+      const meter = $('quota-meter');
+      meter.firstElementChild.style.width = perc + '%';
+      meter.classList.toggle('alto', perc >= 70 && perc < 95);
+      meter.classList.toggle('pieno', perc >= 95);
+      const rimaste = Math.max(0, Math.floor((CREDITI_GIORNO - usati) / COSTO_ANALISI));
+      $('quota-note').textContent = rimaste
+        ? 'Circa ' + rimaste + (rimaste === 1 ? ' analisi disponibile' : ' analisi disponibili') + ' · si ricarica ogni mattina verso le 9'
+        : 'Crediti finiti per oggi · si ricaricano domattina verso le 9';
+    }
 
-    function mostraMessaggio(testo, tipo) {
-      const box = $('messaggio');
-      box.textContent = testo;
+    // ---------- Chiave ----------
+    let chiave = leggi(K_CHIAVE, '');
+    if (typeof chiave !== 'string') chiave = '';
+    function mostraChiave() {
+      $('key-input').value = chiave;
+      $('key-summary').textContent = chiave ? 'Chiave YouTube salvata ✓' : 'La tua chiave YouTube';
+      $('key-box').open = !chiave;
+    }
+
+    // ---------- Messaggi ----------
+    function messaggio(testo, tipo) {
+      const box = $('msg');
+      box.hidden = !testo;
+      box.textContent = testo || '';
       box.className = testo ? 'msg ' + tipo : '';
     }
 
-    // YouTube manda i titoli con simboli codificati (es. &#39;): li trasformo in testo normale
-    function decodifica(testo) {
-      const t = document.createElement('textarea');
-      t.innerHTML = testo || '';
-      return t.value;
+    // ---------- Chiamate a YouTube ----------
+    function spiegaErrore(dati, stato) {
+      const e = (dati && dati.error) || {};
+      const motivo = (e.errors && e.errors[0] && e.errors[0].reason) || '';
+      const testo = e.message || '';
+      if (motivo === 'quotaExceeded' || motivo === 'dailyLimitExceeded')
+        return 'Hai finito i crediti di oggi. Si ricaricano domattina verso le 9.';
+      if (motivo === 'keyInvalid' || /API key not valid/i.test(testo))
+        return 'La chiave non è valida. Controlla di averla copiata tutta e salvala di nuovo.';
+      if (motivo === 'accessNotConfigured' || /has not been used|is disabled/i.test(testo))
+        return 'La "YouTube Data API v3" non è attiva per questa chiave. Attivala in Google Cloud Console e riprova tra qualche minuto.';
+      if (/referer|referrer/i.test(testo))
+        return 'La chiave è bloccata per questo sito. In Google Cloud Console aggiungi questo indirizzo tra i siti permessi.';
+      return 'YouTube ha risposto con un errore (' + stato + '): ' + (testo || 'motivo sconosciuto');
     }
-
-    function formattaData(iso) {
+    async function chiama(risorsa, parametri, costo) {
+      const p = new URLSearchParams(Object.assign({}, parametri, { key: chiave }));
+      aggiungiCrediti(costo);
+      let r;
       try {
-        return new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
-      } catch (e) { return ''; }
+        r = await fetch('https://www.googleapis.com/youtube/v3/' + risorsa + '?' + p);
+      } catch (e) {
+        throw new Error('Non riesco a collegarmi a YouTube. Controlla la connessione a internet.');
+      }
+      const dati = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(spiegaErrore(dati, r.status));
+      return dati;
+    }
+    function aGruppi(lista, n) {
+      const out = [];
+      for (let i = 0; i < lista.length; i += n) out.push(lista.slice(i, i + n));
+      return out;
     }
 
-    function creaVideo(item) {
-      const s = item.snippet;
-      const li = document.createElement('li');
+    async function analizza(termine) {
+      const ora = Date.now();
+      const dopo = new Date(ora - FINESTRA_GIORNI * GIORNO).toISOString();
+
+      messaggio('Cerco i video su "' + termine + '"…', 'info');
+      const ids = [];
+      let pagina = null;
+      for (let i = 0; i < PAGINE_RICERCA; i++) {
+        const par = {
+          part: 'id', type: 'video', maxResults: 50, order: 'relevance', q: termine,
+          publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
+        };
+        if (pagina) par.pageToken = pagina;
+        const d = await chiama('search', par, 100);
+        (d.items || []).forEach((it) => { if (it.id && it.id.videoId && !ids.includes(it.id.videoId)) ids.push(it.id.videoId); });
+        pagina = d.nextPageToken;
+        if (!pagina) break;
+      }
+      if (!ids.length) return [];
+
+      messaggio('Leggo visualizzazioni, like e commenti…', 'info');
+      const video = [];
+      for (const gruppo of aGruppi(ids, 50)) {
+        const d = await chiama('videos', {
+          part: 'snippet,statistics,contentDetails', id: gruppo.join(','),
+          fields: 'items(id,snippet(title,channelId,channelTitle,publishedAt,thumbnails/medium/url),statistics(viewCount,likeCount,commentCount),contentDetails/duration)',
+        }, 1);
+        video.push(...(d.items || []));
+      }
+
+      messaggio('Controllo quanti iscritti hanno i canali…', 'info');
+      const canaliIds = [...new Set(video.map((v) => v.snippet.channelId))];
+      const iscritti = {};
+      for (const gruppo of aGruppi(canaliIds, 50)) {
+        const d = await chiama('channels', {
+          part: 'statistics', id: gruppo.join(','),
+          fields: 'items(id,statistics(subscriberCount,hiddenSubscriberCount))',
+        }, 1);
+        (d.items || []).forEach((c) => {
+          const s = c.statistics || {};
+          iscritti[c.id] = s.hiddenSubscriberCount ? null : (s.subscriberCount != null ? +s.subscriberCount : null);
+        });
+      }
+
+      return video
+        .filter((v) => v.statistics && v.statistics.viewCount != null)
+        .map((v) => {
+          const data = new Date(v.snippet.publishedAt);
+          const giorni = Math.max((ora - data) / GIORNO, 0.5);
+          const views = +v.statistics.viewCount;
+          const isc = iscritti[v.snippet.channelId];
+          return {
+            id: v.id,
+            titolo: decodifica(v.snippet.title),
+            canale: decodifica(v.snippet.channelTitle),
+            thumb: v.snippet.thumbnails && v.snippet.thumbnails.medium ? v.snippet.thumbnails.medium.url : '',
+            data: data.getTime(),
+            giorni,
+            views,
+            likes: v.statistics.likeCount != null ? +v.statistics.likeCount : null,
+            commenti: v.statistics.commentCount != null ? +v.statistics.commentCount : null,
+            iscritti: isc == null ? null : isc,
+            vpd: views / giorni,
+            rapporto: isc ? views / isc : null,
+            durata: durataSecondi(v.contentDetails && v.contentDetails.duration),
+          };
+        });
+    }
+
+    // ---------- Calcolo dei segnali ----------
+    const limita = (x) => Math.max(0, Math.min(100, Math.round(x)));
+    function settimane(video) {
+      const ora = Date.now();
+      const conta = new Array(12).fill(0); // indice 0 = 12 settimane fa, 11 = ultima settimana
+      video.forEach((v) => {
+        const sett = Math.floor((ora - v.data) / (7 * GIORNO));
+        if (sett >= 0 && sett < 12) conta[11 - sett]++;
+      });
+      return conta.map((n, i) => ({ n, inizio: new Date(ora - (12 - i) * 7 * GIORNO), recente: i >= 8 }));
+    }
+    function calcolaSegnali(video, sett) {
+      const segnali = [];
+
+      // 1. Crescita: media ultime 4 settimane contro media delle 8 prima
+      const recenti = sett.slice(8).reduce((a, s) => a + s.n, 0) / 4;
+      const prima = sett.slice(0, 8).reduce((a, s) => a + s.n, 0) / 8;
+      if (video.length >= 5) {
+        const r = (recenti + 0.5) / (prima + 0.5);
+        const perc = Math.round((r - 1) * 100);
+        segnali.push({
+          nome: 'Video in uscita', peso: 0.4, voto: limita(50 + 50 * Math.log2(r)),
+          testo: perc >= 0
+            ? 'Nell\'ultimo mese escono il ' + perc + '% di video in più a settimana rispetto a prima.'
+            : 'Nell\'ultimo mese escono il ' + Math.abs(perc) + '% di video in meno a settimana rispetto a prima.',
+        });
+      }
+
+      // 2. Freschezza: tra i 20 video più visti, quanti sono dell'ultimo mese
+      const top = [...video].sort((a, b) => b.views - a.views).slice(0, 20);
+      if (top.length >= 5) {
+        const nuovi = top.filter((v) => v.giorni <= 28).length;
+        const quota = nuovi / top.length;
+        segnali.push({
+          nome: 'Video nuovi che corrono', peso: 0.3, voto: limita(quota / 0.33 * 50),
+          testo: 'Dei ' + top.length + ' video più visti, ' + nuovi + ' sono usciti nell\'ultimo mese.',
+        });
+      }
+
+      // 3. Piccoli canali: quanti video hanno almeno il doppio delle visualizzazioni rispetto agli iscritti
+      const conIscritti = video.filter((v) => v.rapporto != null);
+      if (conIscritti.length >= 5) {
+        const botti = conIscritti.filter((v) => v.rapporto >= 2).length;
+        segnali.push({
+          nome: 'Piccoli canali che fanno il botto', peso: 0.3, voto: limita(botti / conIscritti.length * 200),
+          testo: botti + ' video su ' + conIscritti.length + ' hanno più del doppio delle visualizzazioni rispetto agli iscritti.',
+        });
+      }
+
+      const pesi = segnali.reduce((a, s) => a + s.peso, 0);
+      const totale = pesi ? Math.round(segnali.reduce((a, s) => a + s.voto * s.peso, 0) / pesi) : null;
+      return { segnali, totale };
+    }
+    function giudizio(v) {
+      if (v == null) return { testo: 'Dati insufficienti', cls: 'neutral' };
+      if (v >= 70) return { testo: 'Sta diventando virale', cls: 'good' };
+      if (v >= 50) return { testo: 'In crescita', cls: 'good' };
+      if (v >= 30) return { testo: 'Stabile', cls: 'warn' };
+      return { testo: 'Poco attiva', cls: 'bad' };
+    }
+
+    // ---------- Tooltip ----------
+    const tip = $('tip');
+    function mostraTip(e, valore, righe) {
+      tip.replaceChildren();
+      const b = document.createElement('b');
+      b.textContent = valore;
+      tip.append(b);
+      righe.forEach((r) => { const d = document.createElement('div'); d.textContent = r; tip.append(d); });
+      tip.hidden = false;
+      let x, y;
+      if (e.clientX != null && e.type !== 'focus') { x = e.clientX; y = e.clientY; }
+      else { const r = e.target.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top; }
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.min(window.innerWidth - w - 8, Math.max(8, x - w / 2)) + 'px';
+      tip.style.top = (y - h - 12 < 8 ? y + 16 : y - h - 12) + 'px';
+    }
+    function nascondiTip() { tip.hidden = true; }
+
+    function el(nome, attr, padre) {
+      const n = document.createElementNS(SVG, nome);
+      for (const k in attr) n.setAttribute(k, attr[k]);
+      if (padre) padre.append(n);
+      return n;
+    }
+    function testo(padre, x, y, t, attr) {
+      const n = el('text', Object.assign({ x, y }, attr || {}), padre);
+      n.textContent = t;
+      return n;
+    }
+    function scalaBella(max) {
+      if (max <= 0) return 4;
+      const pot = Math.pow(10, Math.floor(Math.log10(max)));
+      for (const m of [1, 2, 2.5, 5, 10]) if (m * pot >= max) return m * pot;
+      return 10 * pot;
+    }
+
+    // ---------- Grafico 1: colonne per settimana ----------
+    function graficoSettimane(box, sett) {
+      box.replaceChildren();
+      const W = Math.max(280, box.clientWidth), H = 220;
+      const m = { t: 22, r: 4, b: 26, l: 30 };
+      const iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const max = scalaBella(Math.max(...sett.map((s) => s.n), 1));
+      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Video usciti per settimana' }, box);
+      const y = (v) => m.t + ih - (v / max) * ih;
+
+      [0, max / 2, max].forEach((v) => {
+        el('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'grid' }, svg);
+        testo(svg, m.l - 6, y(v) + 4, nf.format(v), { 'text-anchor': 'end' });
+      });
+
+      const banda = iw / sett.length, bw = Math.min(28, banda * 0.62);
+      const ogniQuanti = W < 420 ? 3 : 2;
+      sett.forEach((s, i) => {
+        const cx = m.l + banda * i + banda / 2;
+        const g = el('g', { class: 'bar-g', tabindex: 0 }, svg);
+        if (s.n > 0) {
+          const top = y(s.n), h = m.t + ih - top, r = Math.min(4, h, bw / 2), x = cx - bw / 2;
+          el('path', {
+            class: 'bar' + (s.recente ? '' : ' old'),
+            d: 'M' + x + ',' + (top + h) + 'V' + (top + r) + 'Q' + x + ',' + top + ' ' + (x + r) + ',' + top +
+               'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + top + ' ' + (x + bw) + ',' + (top + r) + 'V' + (top + h) + 'Z',
+          }, g);
+        }
+        testo(g, cx, y(s.n) - 6, s.n, { 'text-anchor': 'middle', class: 'val' });
+        if (i % ogniQuanti === (sett.length - 1) % ogniQuanti)
+          testo(svg, cx, H - 6, i === sett.length - 1 ? 'questa' : dataBreve(s.inizio), { 'text-anchor': 'middle' });
+        el('rect', { x: cx - banda / 2, y: m.t, width: banda, height: ih, class: 'hit' }, g);
+        const fine = new Date(s.inizio.getTime() + 6 * GIORNO);
+        const info = (e) => mostraTip(e, s.n + ' video', ['Dal ' + dataBreve(s.inizio) + ' al ' + dataBreve(fine)]);
+        g.addEventListener('pointermove', info);
+        g.addEventListener('focus', info);
+        g.addEventListener('pointerleave', nascondiTip);
+        g.addEventListener('blur', nascondiTip);
+      });
+    }
+
+    // ---------- Grafico 2: velocità (punti) ----------
+    function graficoVelocita(box, video) {
+      box.replaceChildren();
+      const dati = video.filter((v) => v.vpd > 0);
+      if (!dati.length) {
+        const p = document.createElement('p'); p.className = 'empty-chart';
+        p.textContent = 'Nessun video con visualizzazioni da mostrare.'; box.append(p); return;
+      }
+      const W = Math.max(280, box.clientWidth), H = 240;
+      const m = { t: 12, r: 8, b: 26, l: 44 };
+      const iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const lo = Math.floor(Math.log10(Math.min(...dati.map((v) => v.vpd))));
+      const hi = Math.max(lo + 1, Math.ceil(Math.log10(Math.max(...dati.map((v) => v.vpd)))));
+      const x = (giorni) => m.l + iw - (Math.min(giorni, FINESTRA_GIORNI) / FINESTRA_GIORNI) * iw;
+      const y = (v) => m.t + ih - ((Math.log10(v) - lo) / (hi - lo)) * ih;
+      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Visualizzazioni al giorno per video' }, box);
+
+      const passo = hi - lo > 5 ? 2 : 1;
+      for (let p = lo; p <= hi; p += passo) {
+        el('line', { x1: m.l, x2: W - m.r, y1: y(Math.pow(10, p)), y2: y(Math.pow(10, p)), class: 'grid' }, svg);
+        testo(svg, m.l - 6, y(Math.pow(10, p)) + 4, compatto(Math.pow(10, p)), { 'text-anchor': 'end' });
+      }
+      el('line', { x1: x(28), x2: x(28), y1: m.t, y2: m.t + ih, class: 'mark-line' }, svg);
+      [[84, '3 mesi fa', 'start'], [56, '2 mesi fa', 'middle'], [28, '1 mese fa', 'middle'], [0, 'oggi', 'end']]
+        .forEach(([g, t, a]) => testo(svg, x(g), H - 6, t, { 'text-anchor': a }));
+
+      // i punti più veloci in cima, così restano visibili
+      [...dati].sort((a, b) => a.vpd - b.vpd).forEach((v) => {
+        const cx = x(v.giorni), cy = y(v.vpd);
+        const link = el('a', { href: 'https://www.youtube.com/watch?v=' + v.id, target: '_blank', rel: 'noopener' }, svg);
+        const hit = el('circle', { cx, cy, r: 11, class: 'hit', tabindex: 0 }, link);
+        el('circle', { cx, cy, r: 4.5, class: 'dot' + (v.giorni <= 28 ? '' : ' old'), stroke: 'var(--surface)', 'stroke-width': 1.5 }, link);
+        const info = (e) => mostraTip(e, compatto(v.vpd) + ' al giorno', [v.titolo, v.canale + ' · ' + compatto(v.views) + ' visualizzazioni']);
+        hit.addEventListener('pointermove', info);
+        hit.addEventListener('focus', info);
+        hit.addEventListener('pointerleave', nascondiTip);
+        hit.addEventListener('blur', nascondiTip);
+      });
+    }
+
+    // ---------- Grafico 3: classifica piccoli canali ----------
+    function classifica(lista, video) {
+      lista.replaceChildren();
+      const top = video.filter((v) => v.rapporto != null).sort((a, b) => b.rapporto - a.rapporto).slice(0, 10);
+      if (!top.length) {
+        const p = document.createElement('p'); p.className = 'empty-chart';
+        p.textContent = 'I canali di questi video nascondono il numero di iscritti.'; lista.append(p); return;
+      }
+      const max = top[0].rapporto;
+      top.forEach((v) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(v.id);
+        a.target = '_blank'; a.rel = 'noopener';
+        const t = document.createElement('span'); t.className = 't'; t.textContent = v.titolo;
+        const x = document.createElement('span'); x.className = 'x num';
+        x.textContent = '×' + (v.rapporto >= 10 ? nf.format(Math.round(v.rapporto)) : nf1.format(v.rapporto));
+        const tr = document.createElement('span'); tr.className = 'track';
+        const bar = document.createElement('span'); bar.style.width = Math.max(2, v.rapporto / max * 100) + '%';
+        tr.append(bar);
+        const c = document.createElement('span'); c.className = 'c';
+        c.textContent = v.canale + ' · ' + compatto(v.iscritti) + ' iscritti · ' + compatto(v.views) + ' visualizzazioni';
+        a.append(t, x, tr, c);
+        li.append(a);
+        lista.append(li);
+      });
+    }
+
+    // ---------- Termometro ----------
+    function termometro(calc) {
+      const g = giudizio(calc.totale);
+      $('score').textContent = calc.totale == null ? '—' : calc.totale;
+      const pill = $('score-pill');
+      pill.textContent = g.testo;
+      pill.className = 'pill ' + g.cls;
+      const box = $('signals');
+      box.replaceChildren();
+      calc.segnali.forEach((s) => {
+        const d = document.createElement('div'); d.className = 'signal';
+        const n = document.createElement('strong'); n.textContent = s.nome;
+        const v = document.createElement('span'); v.className = 'num'; v.textContent = s.voto + '/100';
+        const mt = document.createElement('div'); mt.className = 'meter';
+        const f = document.createElement('span'); f.style.width = s.voto + '%'; mt.append(f);
+        const p = document.createElement('p'); p.textContent = s.testo;
+        d.append(n, v, mt, p);
+        box.append(d);
+      });
+      if (!calc.segnali.length) {
+        const p = document.createElement('p'); p.className = 'muted';
+        p.textContent = 'Ho trovato troppo pochi video per dare un voto. Prova con una parola più generica.';
+        box.append(p);
+      }
+    }
+
+    // ---------- Tabella ----------
+    let videoAttuali = [];
+    let ricercaAttuale = '';
+    let ordine = 'views';
+    function tabella() {
+      const tb = $('tbody');
+      tb.replaceChildren();
+      const lista = [...videoAttuali].sort((a, b) => (b[ordine] == null ? -1 : b[ordine]) - (a[ordine] == null ? -1 : a[ordine]));
+      lista.forEach((v) => {
+        const tr = document.createElement('tr');
+        const td0 = document.createElement('td');
+        const box = document.createElement('div'); box.className = 'vid';
+        const img = document.createElement('img'); img.src = v.thumb; img.alt = ''; img.loading = 'lazy';
+        const info = document.createElement('div'); info.style.minWidth = '0';
+        const a = document.createElement('a');
+        a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(v.id); a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = v.titolo;
+        const sm = document.createElement('small');
+        sm.textContent = v.canale + (v.durata != null ? ' · ' + durataTesto(v.durata) : '');
+        info.append(a, sm);
+        box.append(img, info);
+        td0.append(box);
+        const celle = [
+          [dataBreve(new Date(v.data)), ''],
+          [compatto(v.views), 'r num'],
+          [compatto(v.vpd), 'r num'],
+          [v.rapporto == null ? '—' : '×' + nf1.format(v.rapporto), 'r num'],
+        ];
+        tr.append(td0);
+        celle.forEach(([t, c]) => { const td = document.createElement('td'); td.className = c; td.textContent = t; tr.append(td); });
+        tb.append(tr);
+      });
+      document.querySelectorAll('th button').forEach((b) => {
+        if (b.dataset.sort === ordine) b.setAttribute('aria-sort', 'descending'); else b.removeAttribute('aria-sort');
+      });
+    }
+
+    // ---------- Archivio e download ----------
+    function archivio() { const a = leggi(K_ARCHIVIO, []); return Array.isArray(a) ? a : []; }
+    function salvaInArchivio(termine, video) {
+      const oggi = new Date().toISOString();
+      const nuovi = video.map((v) => ({
+        ricerca: termine, analizzato: oggi, id: v.id, titolo: v.titolo, canale: v.canale, data: v.data,
+        giorni: v.giorni, views: v.views, likes: v.likes, commenti: v.commenti, iscritti: v.iscritti,
+        vpd: v.vpd, rapporto: v.rapporto, durata: v.durata,
+      }));
+      // se lo stesso video è già stato salvato per la stessa ricerca, tengo i numeri più recenti
+      const chiaveRiga = (r) => r.ricerca.toLowerCase() + '|' + r.id;
+      const nuoveChiavi = new Set(nuovi.map(chiaveRiga));
+      scrivi(K_ARCHIVIO, archivio().filter((r) => !nuoveChiavi.has(chiaveRiga(r))).concat(nuovi));
+      aggiornaBottoni();
+    }
+    function aggiornaBottoni() {
+      const n = archivio().length;
+      $('dl-all').textContent = 'Scarica tutte le ricerche (' + nf.format(n) + ')';
+      $('dl-all').disabled = !n;
+      $('clear-all').disabled = !n;
+    }
+    function cellaCsv(v) {
+      if (v == null) return '';
+      if (typeof v === 'number') return Number.isInteger(v) ? String(v) : nf1.format(v).replace(/\./g, '');
+      const s = String(v);
+      return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    function scaricaCsv(righe, nomeFile) {
+      const intest = ['Ricerca', 'Titolo', 'Canale', 'Link', 'Uscito il', 'Giorni online', 'Durata',
+        'Visualizzazioni', 'Visualizzazioni al giorno', 'Like', 'Commenti', 'Iscritti canale', 'Visualizzazioni / iscritti', 'Analizzato il'];
+      const linee = [intest.join(';')];
+      righe.forEach((r) => {
+        linee.push([
+          r.ricerca, r.titolo, r.canale, 'https://www.youtube.com/watch?v=' + r.id,
+          new Date(r.data).toLocaleDateString('it-IT'), Math.floor(r.giorni), durataTesto(r.durata),
+          r.views, r.vpd, r.likes, r.commenti, r.iscritti, r.rapporto,
+          r.analizzato ? new Date(r.analizzato).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT'),
+        ].map(cellaCsv).join(';'));
+      });
+      const blob = new Blob(['﻿' + linee.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
-      a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(item.id.videoId);
-      a.target = '_blank';
-      a.rel = 'noopener';
-
-      const img = document.createElement('img');
-      img.src = (s.thumbnails.medium || s.thumbnails.default).url;
-      img.alt = '';
-      img.loading = 'lazy';
-
-      const info = document.createElement('div');
-      info.className = 'info';
-      const titolo = document.createElement('p');
-      titolo.className = 'title';
-      titolo.textContent = decodifica(s.title);
-      const meta = document.createElement('p');
-      meta.className = 'meta';
-      meta.textContent = decodifica(s.channelTitle) + ' · ' + formattaData(s.publishedAt);
-      const desc = document.createElement('p');
-      desc.className = 'desc';
-      desc.textContent = decodifica(s.description);
-
-      info.append(titolo, meta, desc);
-      a.append(img, info);
-      li.append(a);
-      return li;
+      a.href = URL.createObjectURL(blob);
+      a.download = nomeFile;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+    function nomeSicuro(s) {
+      return (s || 'ricerca').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ricerca';
     }
 
-    async function cerca(nuovaRicerca) {
+    // ---------- Disegno di tutto ----------
+    let settimaneAttuali = [];
+    function disegnaGrafici() {
+      if (!videoAttuali.length) return;
+      graficoSettimane($('chart-weeks'), settimaneAttuali);
+      graficoVelocita($('chart-speed'), videoAttuali);
+    }
+    function mostraRisultati() {
+      settimaneAttuali = settimane(videoAttuali);
+      $('intro').hidden = true;
+      $('results').hidden = false;
+      termometro(calcolaSegnali(videoAttuali, settimaneAttuali));
+      disegnaGrafici();
+      classifica($('rank'), videoAttuali);
+      $('table-title').textContent = videoAttuali.length + ' video trovati per "' + ricercaAttuale + '"';
+      tabella();
+    }
+
+    // ---------- Eventi ----------
+    $('key-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      chiave = $('key-input').value.trim();
+      if (chiave) scrivi(K_CHIAVE, chiave); else cancella(K_CHIAVE);
+      mostraChiave();
+      messaggio(chiave ? 'Chiave salvata. Ora scrivi una nicchia e premi Analizza.' : '', 'info');
+    });
+    $('key-clear').addEventListener('click', () => {
+      chiave = ''; cancella(K_CHIAVE); mostraChiave();
+      messaggio('Chiave cancellata.', 'info');
+    });
+
+    $('search-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const termine = $('search-input').value.trim();
+      if (!termine) return;
       if (!chiave) {
-        $('chiave-box').open = true;
-        mostraMessaggio('Prima inserisci la tua chiave YouTube qui sopra.', 'error');
+        $('key-box').open = true;
+        messaggio('Prima incolla la tua chiave YouTube qui sopra e premi Salva.', 'error');
         return;
       }
-
-      const params = new URLSearchParams({
-        part: 'snippet',
-        type: 'video',
-        maxResults: PER_PAGINA,
-        q: ricercaAttuale,
-        key: chiave,
-      });
-      if (!nuovaRicerca && prossimaPagina) params.set('pageToken', prossimaPagina);
-
-      $('cerca-btn').disabled = true;
-      $('altri').disabled = true;
-      if (nuovaRicerca) {
-        $('risultati').replaceChildren();
-        $('altri').hidden = true;
-      }
-      mostraMessaggio('Sto cercando…', 'info');
-
+      $('search-btn').disabled = true;
       try {
-        const risposta = await fetch('https://www.googleapis.com/youtube/v3/search?' + params);
-        const dati = await risposta.json();
-        if (!risposta.ok) {
-          const motivo = dati.error && dati.error.message ? dati.error.message : 'errore sconosciuto';
-          throw new Error(motivo);
+        const video = await analizza(termine);
+        if (!video.length) {
+          messaggio('Non ho trovato video usciti negli ultimi 3 mesi per "' + termine + '". Prova con altre parole.', 'info');
+          return;
         }
-
-        const video = dati.items || [];
-        video.forEach((item) => $('risultati').append(creaVideo(item)));
-        prossimaPagina = dati.nextPageToken || null;
-        $('altri').hidden = !prossimaPagina;
-
-        const totale = $('risultati').children.length;
-        mostraMessaggio(
-          totale ? 'Ho trovato ' + totale + ' video per "' + ricercaAttuale + '".'
-                 : 'Nessun video trovato per "' + ricercaAttuale + '".',
-          'info'
-        );
+        videoAttuali = video;
+        ricercaAttuale = termine;
+        ordine = 'views';
+        salvaInArchivio(termine, video);
+        messaggio('', '');
+        mostraRisultati();
       } catch (err) {
-        mostraMessaggio('Non sono riuscito a cercare. Motivo: ' + err.message, 'error');
+        messaggio(err.message, 'error');
       } finally {
-        $('cerca-btn').disabled = false;
-        $('altri').disabled = false;
+        $('search-btn').disabled = false;
       }
-    }
-
-    $('chiave-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      chiave = $('chiave').value.trim();
-      salvaChiave(chiave);
-      $('chiave-box').open = !chiave;
-      mostraMessaggio(chiave ? 'Chiave salvata. Ora puoi cercare.' : '', 'info');
     });
 
-    $('cancella-chiave').addEventListener('click', () => {
-      chiave = '';
-      $('chiave').value = '';
-      salvaChiave('');
-      mostraMessaggio('Chiave cancellata.', 'info');
+    document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
+      ordine = b.dataset.sort;
+      tabella();
+    }));
+
+    $('dl-current').addEventListener('click', () => {
+      const oggi = new Date().toISOString();
+      scaricaCsv(videoAttuali.map((v) => Object.assign({ ricerca: ricercaAttuale, analizzato: oggi }, v)),
+        'video-' + nomeSicuro(ricercaAttuale) + '.csv');
+    });
+    $('dl-all').addEventListener('click', () => scaricaCsv(archivio(), 'tutte-le-ricerche.csv'));
+
+    let confermaSvuota = false;
+    $('clear-all').addEventListener('click', () => {
+      const b = $('clear-all');
+      if (!confermaSvuota) {
+        confermaSvuota = true;
+        b.textContent = 'Sicuro? Premi di nuovo';
+        setTimeout(() => { confermaSvuota = false; b.textContent = 'Svuota archivio'; }, 4000);
+        return;
+      }
+      confermaSvuota = false;
+      b.textContent = 'Svuota archivio';
+      cancella(K_ARCHIVIO);
+      aggiornaBottoni();
+      messaggio('Archivio svuotato.', 'info');
     });
 
-    $('cerca-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      ricercaAttuale = $('cerca').value.trim();
-      if (!ricercaAttuale) return;
-      prossimaPagina = null;
-      cerca(true);
-    });
+    let attesa;
+    window.addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(disegnaGrafici, 150); });
+    window.addEventListener('scroll', nascondiTip, { passive: true });
 
-    $('altri').addEventListener('click', () => cerca(false));
+    // ---------- Avvio ----------
+    mostraChiave();
+    mostraCrediti();
+    aggiornaBottoni();
+    setInterval(mostraCrediti, 60000);
   </script>
 </body>
 </html>
