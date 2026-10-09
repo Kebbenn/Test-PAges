@@ -150,6 +150,35 @@
     .signal p { grid-column: 1 / -1; font-size: .85rem; color: var(--ink-2); }
     .signal strong { font-weight: 600; }
 
+    /* Verdetto finale */
+    .verdict {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+      padding: 20px 24px; display: grid; gap: 6px;
+    }
+    .verdict h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
+    .verdict h2::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .verdict.good h2::before { background: var(--good); }
+    .verdict.warn h2::before { background: var(--warn); }
+    .verdict.bad h2::before { background: var(--bad); }
+    .verdict p { color: var(--ink-2); max-width: 70ch; }
+
+    /* Quanto potresti fare tu */
+    .potential { display: grid; gap: 8px; }
+    .potential .big { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+    .potential p { color: var(--ink-2); font-size: .9rem; }
+
+    /* Chi si prende le visualizzazioni */
+    .share-bar { display: flex; gap: 2px; height: 14px; border-radius: 4px; overflow: hidden; background: var(--surface); }
+    .share-bar span { display: block; height: 100%; }
+    .share-bar .top { background: var(--accent); }
+    .share-bar .rest { background: var(--line); }
+    .share-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .88rem; }
+    .share-list li { display: flex; justify-content: space-between; gap: 12px; }
+    .share-list li span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .share-list li.rest-row { color: var(--muted); }
+    .big-line { font-size: 1rem; color: var(--ink); }
+    .big-line b { font-weight: 700; }
+
     /* Grafici */
     .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .card {
@@ -288,13 +317,30 @@
 
     <div id="results" hidden>
       <div style="display:grid; gap:16px">
+        <section class="verdict" id="verdict">
+          <span class="label">Vale la pena?</span>
+          <h2 id="verdict-title">—</h2>
+          <p id="verdict-text"></p>
+        </section>
+
         <section class="thermo">
           <div class="score">
             <span class="label">Termometro viralità</span>
             <div class="score-big num"><span id="score">0</span><small>/100</small></div>
             <span class="pill neutral" id="score-pill">—</span>
+            <span class="muted" style="font-size:.85rem">L'argomento sta crescendo?</span>
           </div>
           <div class="signals" id="signals"></div>
+        </section>
+
+        <section class="thermo">
+          <div class="score">
+            <span class="label">Opportunità</span>
+            <div class="score-big num"><span id="opp-score">0</span><small>/100</small></div>
+            <span class="pill neutral" id="opp-pill">—</span>
+            <span class="muted" style="font-size:.85rem">Un piccolo canale può farcela?</span>
+          </div>
+          <div class="signals" id="opp-signals"></div>
         </section>
 
         <div class="charts">
@@ -325,6 +371,41 @@
               <p>"×10" vuol dire che il video ha 10 volte le visualizzazioni rispetto agli iscritti del canale.</p>
             </div>
             <ol class="rank" id="rank"></ol>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">4 · Grandezza del canale</span>
+              <h2>Visualizzazioni tipiche per grandezza del canale</h2>
+              <p>Canali divisi per numero di iscritti. Il numero sopra la colonna è il valore tipico: metà degli Shorts fa di più, metà di meno.</p>
+            </div>
+            <div class="chart" id="chart-size"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">5 · Quanto potresti fare tu</span>
+              <h2>Cosa fa di solito un canale piccolo</h2>
+            </div>
+            <div class="potential" id="potential"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">6 · Concorrenza</span>
+              <h2>Chi si prende le visualizzazioni</h2>
+              <p>Se pochi canali si prendono quasi tutto, è difficile entrare.</p>
+            </div>
+            <div id="share" style="display:grid; gap:12px"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">7 · Canali nuovi</span>
+              <h2>Canali aperti negli ultimi 6 mesi</h2>
+              <p>Se ci sono canali nuovi che vanno bene, puoi partire da zero anche tu.</p>
+            </div>
+            <div id="newch" style="display:grid; gap:12px"></div>
           </section>
         </div>
 
@@ -573,14 +654,16 @@
       messaggio('Controllo quanti iscritti hanno i canali…', 'info');
       const canaliIds = [...new Set(video.map((v) => v.snippet.channelId))];
       const iscritti = {};
+      const nascita = {};
       for (const gruppo of aGruppi(canaliIds, 50)) {
         const d = await chiama('channels', {
-          part: 'statistics', id: gruppo.join(','),
-          fields: 'items(id,statistics(subscriberCount,hiddenSubscriberCount))',
+          part: 'snippet,statistics', id: gruppo.join(','),
+          fields: 'items(id,snippet/publishedAt,statistics(subscriberCount,hiddenSubscriberCount))',
         }, 1);
         (d.items || []).forEach((c) => {
           const s = c.statistics || {};
           iscritti[c.id] = s.hiddenSubscriberCount ? null : (s.subscriberCount != null ? +s.subscriberCount : null);
+          nascita[c.id] = c.snippet && c.snippet.publishedAt ? new Date(c.snippet.publishedAt).getTime() : null;
         });
       }
 
@@ -600,6 +683,8 @@
             base: pertinenti.has(v.id),
             titolo: decodifica(v.snippet.title),
             canale: decodifica(v.snippet.channelTitle),
+            canaleId: v.snippet.channelId,
+            canaleNato: nascita[v.snippet.channelId] == null ? null : nascita[v.snippet.channelId],
             thumb: v.snippet.thumbnails && v.snippet.thumbnails.medium ? v.snippet.thumbnails.medium.url : '',
             data: data.getTime(),
             giorni,
@@ -668,6 +753,97 @@
       const totale = pesi ? Math.round(segnali.reduce((a, s) => a + s.voto * s.peso, 0) / pesi) : null;
       return { segnali, totale };
     }
+    function mediana(lista) { return percentile(lista, 0.5); }
+    function percentile(lista, q) {
+      if (!lista.length) return null;
+      const a = [...lista].sort((x, y) => x - y);
+      const pos = (a.length - 1) * q, b = Math.floor(pos);
+      return a[b + 1] !== undefined ? a[b] + (a[b + 1] - a[b]) * (pos - b) : a[b];
+    }
+    const GRUPPI = [
+      { nome: 'Sotto 1.000', breve: '< 1k', max: 1e3 },
+      { nome: '1.000 – 10.000', breve: '1k–10k', max: 1e4 },
+      { nome: '10.000 – 100.000', breve: '10k–100k', max: 1e5 },
+      { nome: 'Oltre 100.000', breve: '> 100k', max: Infinity },
+    ];
+    const PICCOLO = 1e4;            // "canale piccolo" = sotto 10.000 iscritti
+    const GIORNI_NUOVO = 182;       // "canale nuovo" = aperto negli ultimi 6 mesi
+
+    function perCanale(video) {
+      const mappa = new Map();
+      video.forEach((v) => {
+        const c = mappa.get(v.canaleId) || { id: v.canaleId, nome: v.canale, iscritti: v.iscritti, nato: v.canaleNato, views: 0, shorts: 0, migliore: null };
+        c.views += v.views; c.shorts++;
+        if (!c.migliore || v.views > c.migliore.views) c.migliore = v;
+        mappa.set(v.canaleId, c);
+      });
+      return [...mappa.values()];
+    }
+    function canaliNuovi(video) {
+      const soglia = mediana(video.map((v) => v.views));
+      const limite = Date.now() - GIORNI_NUOVO * GIORNO;
+      const canali = perCanale(video);
+      const nuovi = canali.filter((c) => c.nato != null && c.nato >= limite)
+        .map((c) => Object.assign(c, { vaBene: c.migliore.views >= soglia }))
+        .sort((a, b) => b.migliore.views - a.migliore.views);
+      return { canali, nuovi, bene: nuovi.filter((c) => c.vaBene) };
+    }
+    function concorrenza(video) {
+      const canali = perCanale(video).sort((a, b) => b.views - a.views);
+      const totale = canali.reduce((a, c) => a + c.views, 0);
+      const primi = canali.slice(0, 5);
+      const quota = totale ? primi.reduce((a, c) => a + c.views, 0) / totale : 0;
+      return { canali, totale, primi, quota };
+    }
+    function calcolaOpportunita(video) {
+      const segnali = [];
+      const tutti = mediana(video.map((v) => v.views));
+      const piccoli = video.filter((v) => v.iscritti != null && v.iscritti < PICCOLO).map((v) => v.views);
+      if (piccoli.length >= 3 && tutti) {
+        const mp = mediana(piccoli);
+        segnali.push({
+          nome: 'Piccoli canali che si fanno vedere', peso: 0.4, voto: limita(mp / tutti * 100),
+          testo: 'Gli Shorts dei canali sotto 10.000 iscritti fanno di solito ' + compatto(mp) +
+            ' visualizzazioni, contro ' + compatto(tutti) + ' della nicchia.',
+        });
+      }
+      const nc = canaliNuovi(video);
+      if (nc.canali.length >= 3) {
+        segnali.push({
+          nome: 'Canali nuovi che vanno bene', peso: 0.3, voto: limita(nc.bene.length / nc.canali.length * 400),
+          testo: nc.bene.length + ' canali su ' + nc.canali.length + ' sono nati negli ultimi 6 mesi e vanno sopra la media.',
+        });
+      }
+      const cc = concorrenza(video);
+      if (cc.canali.length >= 3) {
+        segnali.push({
+          nome: 'Spazio lasciato dai canali grandi', peso: 0.3, voto: limita((1 - cc.quota) / 0.7 * 100),
+          testo: 'I primi ' + cc.primi.length + ' canali si prendono il ' + Math.round(cc.quota * 100) + '% delle visualizzazioni.',
+        });
+      }
+      const pesi = segnali.reduce((a, x) => a + x.peso, 0);
+      const totale = pesi ? Math.round(segnali.reduce((a, x) => a + x.voto * x.peso, 0) / pesi) : null;
+      return { segnali, totale };
+    }
+    function giudizioOpportunita(v) {
+      if (v == null) return { testo: 'Dati insufficienti', cls: 'neutral' };
+      if (v >= 70) return { testo: 'Ottima occasione', cls: 'good' };
+      if (v >= 50) return { testo: 'Buona occasione', cls: 'good' };
+      if (v >= 30) return { testo: 'Difficile', cls: 'warn' };
+      return { testo: 'Molto difficile', cls: 'bad' };
+    }
+    function verdetto(viral, opp) {
+      if (viral == null || opp == null)
+        return { cls: 'neutral', titolo: 'Non riesco a dirlo', testo: 'Ho trovato troppo pochi Shorts. Prova con una parola più generica o con la ricerca "Profonda".' };
+      if (viral >= 50 && opp >= 50)
+        return { cls: 'good', titolo: 'Sì, vale la pena', testo: 'L\'argomento sta crescendo e anche i canali piccoli riescono a farsi vedere.' };
+      if (opp >= 50)
+        return { cls: 'good', titolo: 'Sì, ma senza fretta', testo: 'Non sta esplodendo, ma i canali piccoli hanno spazio. Va bene se l\'argomento ti piace e puoi farlo con costanza.' };
+      if (viral >= 50)
+        return { cls: 'warn', titolo: 'Forse', testo: 'L\'argomento cresce, ma le visualizzazioni vanno soprattutto ai canali grandi. Ti serve un\'idea che ti distingua.' };
+      return { cls: 'bad', titolo: 'Meglio cercare altro', testo: 'L\'argomento non cresce e i canali piccoli fanno fatica a farsi vedere.' };
+    }
+
     function giudizio(v) {
       if (v == null) return { testo: 'Dati insufficienti', cls: 'neutral' };
       if (v >= 70) return { testo: 'Sta diventando virale', cls: 'good' };
@@ -821,14 +997,142 @@
       });
     }
 
+    // ---------- Grafico 4: grandezza del canale ----------
+    function graficoGrandezza(box, video) {
+      box.replaceChildren();
+      const gruppi = GRUPPI.map((g, i) => {
+        const min = i ? GRUPPI[i - 1].max : 0;
+        const views = video.filter((v) => v.iscritti != null && v.iscritti >= min && v.iscritti < g.max).map((v) => v.views);
+        return { g, n: views.length, med: mediana(views), basso: percentile(views, 0.25), alto: percentile(views, 0.75) };
+      });
+      const W = Math.max(280, box.clientWidth), H = 230;
+      const m = { t: 22, r: 4, b: 40, l: 4 };
+      const iw = W - m.l - m.r, ih = H - m.t - m.b;
+      const max = Math.max(...gruppi.map((x) => x.med || 0), 1);
+      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Visualizzazioni tipiche per grandezza del canale' }, box);
+      el('line', { x1: m.l, x2: W - m.r, y1: m.t + ih, y2: m.t + ih, class: 'grid' }, svg);
+      const banda = iw / gruppi.length, bw = Math.min(56, banda * 0.55);
+      gruppi.forEach((x, i) => {
+        const cx = m.l + banda * i + banda / 2;
+        const g = el('g', { class: 'bar-g', tabindex: 0 }, svg);
+        const h = x.med ? Math.max(2, x.med / max * ih) : 0, top = m.t + ih - h;
+        if (h) {
+          const r = Math.min(4, h, bw / 2), bx = cx - bw / 2;
+          el('path', { class: 'bar', d: 'M' + bx + ',' + (top + h) + 'V' + (top + r) + 'Q' + bx + ',' + top + ' ' + (bx + r) + ',' + top +
+            'H' + (bx + bw - r) + 'Q' + (bx + bw) + ',' + top + ' ' + (bx + bw) + ',' + (top + r) + 'V' + (top + h) + 'Z' }, g);
+        }
+        testo(g, cx, top - 6, x.n ? compatto(x.med) : 'nessuno', { 'text-anchor': 'middle', class: 'val' });
+        testo(svg, cx, H - 22, x.g.breve, { 'text-anchor': 'middle', class: 'val' });
+        testo(svg, cx, H - 6, x.n + ' Shorts', { 'text-anchor': 'middle' });
+        el('rect', { x: cx - banda / 2, y: m.t, width: banda, height: ih, class: 'hit' }, g);
+        const info = (e) => mostraTip(e, x.n ? compatto(x.med) + ' visualizzazioni' : 'Nessuno Short',
+          x.n ? ['Canali con ' + x.g.nome + ' iscritti', 'Di solito tra ' + compatto(x.basso) + ' e ' + compatto(x.alto), x.n + ' Shorts trovati'] : ['Canali con ' + x.g.nome + ' iscritti']);
+        g.addEventListener('pointermove', info);
+        g.addEventListener('focus', info);
+        g.addEventListener('pointerleave', nascondiTip);
+        g.addEventListener('blur', nascondiTip);
+      });
+    }
+
+    function paragrafo(testo, cls) {
+      const p = document.createElement('p');
+      if (cls) p.className = cls;
+      p.textContent = testo;
+      return p;
+    }
+
+    // ---------- 5: quanto potresti fare tu ----------
+    function potenziale(box, video) {
+      box.replaceChildren();
+      const piccoli = video.filter((v) => v.iscritti != null && v.iscritti < PICCOLO);
+      if (piccoli.length < 5) {
+        box.append(paragrafo('Ho trovato solo ' + piccoli.length + ' Shorts di canali sotto 10.000 iscritti: troppo pochi per una stima. Prova la ricerca "Profonda".', 'empty-chart'));
+        return;
+      }
+      const views = piccoli.map((v) => v.views);
+      const big = document.createElement('div');
+      big.className = 'big num';
+      big.textContent = compatto(percentile(views, 0.25)) + ' – ' + compatto(percentile(views, 0.75));
+      const migliore = piccoli.reduce((a, v) => (v.views > a.views ? v : a));
+      box.append(
+        big,
+        paragrafo('visualizzazioni per Short', 'label'),
+        paragrafo('È quanto fanno di solito i canali sotto 10.000 iscritti in questa nicchia (calcolato su ' + piccoli.length + ' Shorts).'),
+        paragrafo('Il migliore di loro è arrivato a ' + compatto(migliore.views) + ' visualizzazioni con ' + compatto(migliore.iscritti) + ' iscritti.'),
+      );
+    }
+
+    // ---------- 6: chi si prende le visualizzazioni ----------
+    function quote(box, video) {
+      box.replaceChildren();
+      const cc = concorrenza(video);
+      if (!cc.totale) { box.append(paragrafo('Nessuna visualizzazione da confrontare.', 'empty-chart')); return; }
+      const perc = Math.round(cc.quota * 100);
+      const altri = cc.canali.length - cc.primi.length;
+      const riga = document.createElement('p');
+      riga.className = 'big-line';
+      const b = document.createElement('b'); b.textContent = perc + '%';
+      riga.append('I primi ' + cc.primi.length + ' canali si prendono il ', b, ' delle visualizzazioni.');
+      const barra = document.createElement('div');
+      barra.className = 'share-bar';
+      barra.setAttribute('role', 'img');
+      barra.setAttribute('aria-label', 'Primi canali ' + perc + '%, tutti gli altri ' + (100 - perc) + '%');
+      const t = document.createElement('span'); t.className = 'top'; t.style.width = perc + '%';
+      barra.append(t);
+      if (altri > 0) { const r = document.createElement('span'); r.className = 'rest'; r.style.flex = '1'; barra.append(r); }
+      const ul = document.createElement('ul');
+      ul.className = 'share-list';
+      cc.primi.forEach((c) => {
+        const li = document.createElement('li');
+        const n = document.createElement('span'); n.textContent = c.nome + (c.iscritti != null ? ' · ' + compatto(c.iscritti) + ' iscritti' : '');
+        const v = document.createElement('span'); v.className = 'num'; v.textContent = Math.round(c.views / cc.totale * 100) + '%';
+        li.append(n, v); ul.append(li);
+      });
+      if (altri > 0) {
+        const li = document.createElement('li'); li.className = 'rest-row';
+        const n = document.createElement('span'); n.textContent = 'Tutti gli altri ' + altri + ' canali';
+        const v = document.createElement('span'); v.className = 'num'; v.textContent = (100 - perc) + '%';
+        li.append(n, v); ul.append(li);
+      }
+      box.append(riga, barra, ul);
+    }
+
+    // ---------- 7: canali nuovi ----------
+    function nuoviCanali(box, video) {
+      box.replaceChildren();
+      const nc = canaliNuovi(video);
+      const riga = document.createElement('p');
+      riga.className = 'big-line';
+      const b = document.createElement('b'); b.textContent = nc.bene.length;
+      riga.append(nc.nuovi.length + ' canali su ' + nc.canali.length + ' sono nati negli ultimi 6 mesi. ', b,
+        nc.bene.length === 1 ? ' ha uno Short sopra la media della nicchia.' : ' hanno uno Short sopra la media della nicchia.');
+      box.append(riga);
+      if (!nc.nuovi.length) { box.append(paragrafo('Nessun canale nuovo tra quelli trovati: qui ci sono soprattutto canali già avviati.', 'muted')); return; }
+      const ol = document.createElement('ol');
+      ol.className = 'rank';
+      nc.nuovi.slice(0, 5).forEach((c) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = linkVideo(c.migliore.id); a.target = '_blank'; a.rel = 'noopener';
+        const t = document.createElement('span'); t.className = 't'; t.textContent = c.nome;
+        const x = document.createElement('span'); x.className = 'x num'; x.textContent = compatto(c.migliore.views);
+        const mesi = Math.max(0, Math.round((Date.now() - c.nato) / (30.4 * GIORNO)));
+        const info = document.createElement('span'); info.className = 'c';
+        info.textContent = (mesi < 1 ? 'aperto meno di un mese fa' : 'aperto ' + mesi + (mesi === 1 ? ' mese fa' : ' mesi fa')) +
+          (c.iscritti != null ? ' · ' + compatto(c.iscritti) + ' iscritti' : '') + ' · Short migliore: ' + c.migliore.titolo;
+        a.append(t, x, info); li.append(a); ol.append(li);
+      });
+      box.append(ol);
+    }
+
     // ---------- Termometro ----------
-    function termometro(calc) {
-      const g = giudizio(calc.totale);
-      $('score').textContent = calc.totale == null ? '—' : calc.totale;
-      const pill = $('score-pill');
+    function termometro(calc, prefisso, giudica) {
+      const g = giudica(calc.totale);
+      $(prefisso + 'score').textContent = calc.totale == null ? '—' : calc.totale;
+      const pill = $(prefisso ? prefisso + 'pill' : 'score-pill');
       pill.textContent = g.testo;
       pill.className = 'pill ' + g.cls;
-      const box = $('signals');
+      const box = $(prefisso + 'signals');
       box.replaceChildren();
       calc.segnali.forEach((s) => {
         const d = document.createElement('div'); d.className = 'signal';
@@ -889,7 +1193,7 @@
     function salvaInArchivio(termine, video) {
       const oggi = new Date().toISOString();
       const nuovi = video.map((v) => ({
-        ricerca: termine, analizzato: oggi, id: v.id, titolo: v.titolo, canale: v.canale, data: v.data,
+        ricerca: termine, analizzato: oggi, id: v.id, titolo: v.titolo, canale: v.canale, canaleNato: v.canaleNato, data: v.data,
         giorni: v.giorni, views: v.views, likes: v.likes, commenti: v.commenti, iscritti: v.iscritti,
         vpd: v.vpd, rapporto: v.rapporto, durata: v.durata,
       }));
@@ -913,13 +1217,14 @@
     }
     function scaricaCsv(righe, nomeFile) {
       const intest = ['Ricerca', 'Titolo', 'Canale', 'Link', 'Uscito il', 'Giorni online', 'Durata',
-        'Visualizzazioni', 'Visualizzazioni al giorno', 'Like', 'Commenti', 'Iscritti canale', 'Visualizzazioni / iscritti', 'Analizzato il'];
+        'Visualizzazioni', 'Visualizzazioni al giorno', 'Like', 'Commenti', 'Iscritti canale', 'Canale aperto il', 'Visualizzazioni / iscritti', 'Analizzato il'];
       const linee = [intest.join(';')];
       righe.forEach((r) => {
         linee.push([
           r.ricerca, r.titolo, r.canale, linkVideo(r.id),
           new Date(r.data).toLocaleDateString('it-IT'), Math.floor(r.giorni), durataTesto(r.durata),
-          r.views, r.vpd, r.likes, r.commenti, r.iscritti, r.rapporto,
+          r.views, r.vpd, r.likes, r.commenti, r.iscritti,
+          r.canaleNato ? new Date(r.canaleNato).toLocaleDateString('it-IT') : '', r.rapporto,
           r.analizzato ? new Date(r.analizzato).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT'),
         ].map(cellaCsv).join(';'));
       });
@@ -942,12 +1247,23 @@
       if (!videoAttuali.length) return;
       graficoSettimane($('chart-weeks'), settimaneAttuali);
       graficoVelocita($('chart-speed'), videoAttuali);
+      graficoGrandezza($('chart-size'), videoAttuali);
     }
     function mostraRisultati() {
       settimaneAttuali = settimane(videoAttuali);
       $('intro').hidden = true;
       $('results').hidden = false;
-      termometro(calcolaSegnali(videoAttuali, settimaneAttuali));
+      const viral = calcolaSegnali(videoAttuali, settimaneAttuali);
+      const opp = calcolaOpportunita(videoAttuali);
+      termometro(viral, '', giudizio);
+      termometro(opp, 'opp-', giudizioOpportunita);
+      const vd = verdetto(viral.totale, opp.totale);
+      $('verdict').className = 'verdict ' + vd.cls;
+      $('verdict-title').textContent = vd.titolo;
+      $('verdict-text').textContent = vd.testo;
+      potenziale($('potential'), videoAttuali);
+      quote($('share'), videoAttuali);
+      nuoviCanali($('newch'), videoAttuali);
       disegnaGrafici();
       classifica($('rank'), videoAttuali);
       $('table-title').textContent = videoAttuali.length + ' Shorts trovati per "' + ricercaAttuale + '"';
