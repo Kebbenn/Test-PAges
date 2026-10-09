@@ -164,6 +164,9 @@
       border: 1px solid var(--line); background: var(--surface); color: var(--ink);
     }
     .field input { padding: 11px 14px; font-size: .95rem; }
+    .check { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--ink-2); cursor: pointer; justify-self: start; }
+    .check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; flex: none; padding: 0; }
+    .check b { color: var(--ink); font-weight: 600; }
     .disc-cost { font-size: .82rem; color: var(--muted); }
     .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
     .topic {
@@ -383,6 +386,7 @@
         </label>
         <button id="disc-btn" type="submit">Cerca argomenti virali</button>
       </form>
+      <label class="check"><input type="checkbox" class="solo-rank" checked> Solo Shorts con <b>rank</b> o <b>ranking</b> nel titolo</label>
       <p class="disc-cost" id="disc-cost"></p>
       <p class="msg info" id="disc-status" hidden></p>
       <ol class="topics" id="topics"></ol>
@@ -410,6 +414,7 @@
         <input id="search-input" type="search" placeholder="Es. ricette air fryer, allenamento a casa…" required>
         <button id="search-btn" type="submit">Analizza</button>
       </form>
+      <label class="check"><input type="checkbox" class="solo-rank" checked> Solo Shorts con <b>rank</b> o <b>ranking</b> nel titolo</label>
       <div class="depth" role="radiogroup" aria-label="Quanti Shorts cercare">
         <span class="label">Quanti Shorts cercare</span>
         <label><input type="radio" name="livello" value="veloce"><span><b>Veloce</b> fino a 100 · 205 crediti</span></label>
@@ -418,6 +423,7 @@
       </div>
       <div class="search-note">
         <span>Cerco solo Shorts (fino a 3 minuti) di qualsiasi periodo: i più pertinenti, i più visti e i più nuovi.
+          Con la casella attiva tengo solo quelli con "rank" o "ranking" nel titolo.
           Scarto quelli che non parlano del tuo argomento.</span>
       </div>
     </section>
@@ -752,6 +758,15 @@
       return out;
     }
 
+    // ---------- Solo Shorts di classifiche: "rank" o "ranking" nel titolo ----------
+    const K_SOLO_RANK = 'radar-solo-rank';
+    let soloRank = leggi(K_SOLO_RANK, true) !== false;
+    // trova rank, ranks, ranked, ranking, rankings (anche come #ranking), ma non parole come "frank" o "cranky"
+    const RE_RANK = /(^|[^\p{L}])rank(s|ed|ing|ings)?(?![\p{L}])/iu;
+    const haRank = (titolo) => RE_RANK.test(titolo || '');
+    const conRank = (q) => (soloRank ? (q ? q + ' ' : '') + 'rank|ranking' : q);
+    const tagRank = (t) => soloRank && /^rank(s|ed|ing|ings)?$/.test(t);
+
     // Riduco le parole alla radice (es. "ricette" e "ricetta" → "ricet") e tolgo gli accenti
     function parole(testo) {
       return [...new Set((testo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -779,7 +794,7 @@
         let pagina = null;
         for (let i = 0; i < pagine; i++) {
           const par = {
-            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: termine,
+            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: conRank(termine),
             fields: 'nextPageToken,items/id/videoId',
           };
           if (pagina) par.pageToken = pagina;
@@ -830,6 +845,7 @@
         .filter((v) => { const d = durataSecondi(v.contentDetails && v.contentDetails.duration); return d != null && d > 0 && d <= DURATA_MAX_SHORT; })
         // quelli trovati come "più visti" o "più nuovi" li tengo solo se parlano davvero dell'argomento
         .filter((v) => pertinenti.has(v.id) || stessoArgomento(v.snippet, paroleChiave))
+        .filter((v) => !soloRank || haRank(decodifica(v.snippet.title)))
         .map((v) => {
           const data = new Date(v.snippet.publishedAt);
           const giorni = Math.max((ora - data) / GIORNO, 0.5);
@@ -1283,7 +1299,7 @@
       const area = $('disc-area').value.trim();
       const sel = $('disc-cat');
       const nomeCat = sel.options[sel.selectedIndex].text;
-      const ambito = area ? 'Area "' + area + '"' + (sel.value !== 'tutte' ? ' in ' + nomeCat : '') : nomeCat;
+      const ambito = (area ? 'Area "' + area + '"' + (sel.value !== 'tutte' ? ' in ' + nomeCat : '') : nomeCat) + (soloRank ? ' · solo ranking' : '');
       const ora = Date.now();
       const dopo = new Date(ora - GIORNI_SCOPRI * GIORNO).toISOString();
 
@@ -1298,7 +1314,8 @@
             part: 'id', type: 'video', videoDuration: 'short', order: 'viewCount', maxResults: 50,
             publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
           };
-          if (ps.q) par.q = ps.q;
+          const q = conRank(ps.q);
+          if (q) par.q = q;
           if (ps.cat) par.videoCategoryId = ps.cat;
           if (pagina) par.pageToken = pagina;
           let d;
@@ -1315,7 +1332,7 @@
       // 2. i numeri di ogni Short
       statoScopri('Leggo le visualizzazioni di ' + ids.size + ' Shorts…');
       const paroleArea = parole(area);
-      const escludi = (t) => paroleArea.length > 0 && parole(t).every((p) => paroleArea.includes(p));
+      const escludi = (t) => tagRank(t) || (paroleArea.length > 0 && parole(t).every((p) => paroleArea.includes(p)));
       const video = [];
       for (const gruppo of aGruppi([...ids], 50)) {
         const d = await chiama('videos', {
@@ -1325,6 +1342,7 @@
         (d.items || []).forEach((v) => {
           const durata = durataSecondi(v.contentDetails && v.contentDetails.duration);
           if (!v.statistics || v.statistics.viewCount == null || !durata || durata > DURATA_MAX_SHORT) return;
+          if (soloRank && !haRank(decodifica(v.snippet.title))) return;
           const views = +v.statistics.viewCount;
           const giorni = Math.max((ora - new Date(v.snippet.publishedAt)) / GIORNO, 1);
           const lingua = (v.snippet.defaultAudioLanguage || v.snippet.defaultLanguage || '').slice(0, 2).toLowerCase() || null;
@@ -1361,7 +1379,7 @@
       const top = temi.slice(0, 40);
 
       // 4. confronto con l'ultima volta che hai cercato la stessa cosa
-      const chiaveAmbito = (sel.value + '|' + area.toLowerCase());
+      const chiaveAmbito = (sel.value + '|' + area.toLowerCase() + (soloRank ? '|rank' : ''));
       const storico = leggi(K_STORICO_SCOPERTE, {});
       const prima = storico[chiaveAmbito];
       const giaVisti = new Set(prima ? prima.visti : []);
@@ -1870,7 +1888,7 @@
       try {
         const video = await analizza(termine);
         if (!video.length) {
-          messaggio('Non ho trovato Shorts per "' + termine + '". Prova con altre parole.', 'info');
+          messaggio((soloRank ? 'Non ho trovato Shorts con "rank" o "ranking" nel titolo per "' : 'Non ho trovato Shorts per "') + termine + '". Prova con altre parole.', 'info');
           return;
         }
         videoAttuali = video;
@@ -1898,6 +1916,14 @@
     }));
 
     $('discover-more').addEventListener('click', () => { mostraTutti = !mostraTutti; mostraScoperte(); });
+    document.querySelectorAll('.solo-rank').forEach((c) => {
+      c.checked = soloRank;
+      c.addEventListener('change', () => {
+        soloRank = c.checked;
+        scrivi(K_SOLO_RANK, soloRank);
+        document.querySelectorAll('.solo-rank').forEach((x) => { x.checked = soloRank; });
+      });
+    });
     $('disc-cat').addEventListener('change', mostraCostoScopri);
     $('disc-area').addEventListener('input', mostraCostoScopri);
     $('discover-form').addEventListener('submit', async (e) => {

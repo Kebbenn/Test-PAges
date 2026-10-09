@@ -19,6 +19,8 @@ const GIORNI_INDIETRO = 3;        // Shorts usciti negli ultimi 3 giorni
 const DURATA_MAX_SHORT = 180;
 const TEMI_SALVATI = 40;
 const GIORNI_STORICO = 30;
+// Solo Shorts di classifiche: "rank" o "ranking" nel titolo (anche ranks, ranked, rankings, #ranking)
+const RE_RANK = /(^|[^\p{L}])rank(s|ed|ing|ings)?(?![\p{L}])/iu;
 
 // Una ricerca per categoria di YouTube, così la classifica non è fatta solo di musica e intrattenimento
 const CATEGORIE = [
@@ -73,7 +75,7 @@ function hashtag(testo) {
   const trovati = new Set();
   for (const m of (testo || '').matchAll(/#([\p{L}\p{N}_]+)/gu)) {
     const t = m[1].toLowerCase();
-    if (t.length < 3 || t.length > 30 || /^\d+$/.test(t) || GENERICI.has(t)) continue;
+    if (t.length < 3 || t.length > 30 || /^\d+$/.test(t) || GENERICI.has(t) || /^rank(s|ed|ing|ings)?$/.test(t)) continue;
     trovati.add(t);
     if (trovati.size >= 8) break;   // chi mette 40 hashtag non deve contare 40 volte
   }
@@ -92,7 +94,7 @@ const dopo = new Date(ora - GIORNI_INDIETRO * GIORNO).toISOString();
 const ids = new Set();
 for (const categoria of CATEGORIE) {
   const par = {
-    part: 'id', type: 'video', videoDuration: 'short', order: 'viewCount', maxResults: 50,
+    part: 'id', type: 'video', videoDuration: 'short', order: 'viewCount', maxResults: 50, q: 'rank|ranking',
     publishedAfter: dopo, fields: 'items/id/videoId',
   };
   if (categoria) par.videoCategoryId = categoria;
@@ -117,6 +119,7 @@ for (const gruppo of aGruppi([...ids], 50)) {
   for (const v of d.items || []) {
     const durata = durataSecondi(v.contentDetails?.duration);
     if (v.statistics?.viewCount == null || !durata || durata > DURATA_MAX_SHORT) continue;
+    if (!RE_RANK.test(v.snippet.title)) continue;
     const giorni = Math.max((ora - new Date(v.snippet.publishedAt)) / GIORNO, 1);
     const views = +v.statistics.viewCount;
     video.push({
