@@ -96,6 +96,17 @@
     button:disabled { opacity: .5; cursor: default; }
     .btn-light { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
     .btn-link { background: none; color: var(--muted); padding: 0; font-weight: 400; text-decoration: underline; border-radius: 4px; }
+    .depth { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .depth .label { margin-right: 4px; }
+    .depth label { position: relative; cursor: pointer; }
+    .depth input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .depth label span {
+      display: inline-block; padding: 7px 12px; border-radius: 999px; font-size: .85rem;
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+    }
+    .depth label b { font-weight: 600; color: var(--ink); margin-right: 4px; }
+    .depth input:checked + span { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+    .depth input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
     .search-note { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; color: var(--muted); }
 
     details.key {
@@ -254,9 +265,15 @@
         <input id="search-input" type="search" placeholder="Es. ricette air fryer, allenamento a casa…" required>
         <button id="search-btn" type="submit">Analizza</button>
       </form>
+      <div class="depth" role="radiogroup" aria-label="Quanti Shorts cercare">
+        <span class="label">Quanti Shorts cercare</span>
+        <label><input type="radio" name="livello" value="veloce"><span><b>Veloce</b> fino a 100 · 205 crediti</span></label>
+        <label><input type="radio" name="livello" value="normale"><span><b>Normale</b> fino a 200 · 405 crediti</span></label>
+        <label><input type="radio" name="livello" value="profonda"><span><b>Profonda</b> fino a 300 · 605 crediti</span></label>
+      </div>
       <div class="search-note">
-        <span>Analizzo solo gli Shorts (fino a 3 minuti) più pertinenti usciti negli ultimi 3 mesi.</span>
-        <span>Ogni analisi usa circa 205 crediti.</span>
+        <span>Cerco solo Shorts (fino a 3 minuti) usciti negli ultimi 3 mesi: i più pertinenti, i più visti e i più nuovi.
+          Scarto quelli che non parlano del tuo argomento.</span>
       </div>
     </section>
 
@@ -285,7 +302,7 @@
             <div class="card-head">
               <span class="label">1 · Settimane</span>
               <h2>Shorts usciti ogni settimana</h2>
-              <p>Ultime 12 settimane. Se le colonne a destra sono più alte, la nicchia cresce.</p>
+              <p>Ultime 12 settimane, contando gli Shorts più pertinenti. Se le colonne a destra sono più alte, la nicchia cresce.</p>
             </div>
             <div class="legend"><span><i></i>Ultime 4 settimane</span><span><i class="old"></i>Settimane prima</span></div>
             <div class="chart" id="chart-weeks"></div>
@@ -349,9 +366,18 @@
     // ---------- Impostazioni ----------
     const GIORNO = 86400000;
     const FINESTRA_GIORNI = 84;          // 12 settimane
-    const PAGINE_RICERCA = 2;            // 2 x 50 = 100 video
+    // Ogni passaggio = [ordine dei risultati di YouTube, quante pagine da 50 video]
+    const LIVELLI = {
+      veloce:   { nome: 'Veloce',   passaggi: [['relevance', 2]] },
+      normale:  { nome: 'Normale',  passaggi: [['relevance', 2], ['viewCount', 1], ['date', 1]] },
+      profonda: { nome: 'Profonda', passaggi: [['relevance', 3], ['viewCount', 2], ['date', 1]] },
+    };
+    const K_LIVELLO = 'radar-livello';
+    const costoLivello = (l) => LIVELLI[l].passaggi.reduce((a, p) => a + p[1], 0) * 100 + 5;
+    // Parole troppo comuni per decidere se un video parla dello stesso argomento
+    const PAROLE_VUOTE = new Set(('il lo la i gli le un una uno di da in con su per tra fra e o a al allo alla ai agli alle del dello della dei degli delle ' +
+      'nel nella nei nelle sul sulla come che chi cosa piu the of and or to in on for with how what my your best top').split(' '));
     const CREDITI_GIORNO = 10000;        // limite gratuito di YouTube
-    const COSTO_ANALISI = 205;
     const K_CHIAVE = 'yt-api-key';
     const K_CREDITI = 'radar-crediti';
     const K_ARCHIVIO = 'radar-archivio';
@@ -424,11 +450,19 @@
       meter.firstElementChild.style.width = perc + '%';
       meter.classList.toggle('alto', perc >= 70 && perc < 95);
       meter.classList.toggle('pieno', perc >= 95);
-      const rimaste = Math.max(0, Math.floor((CREDITI_GIORNO - usati) / COSTO_ANALISI));
+      const rimaste = Math.max(0, Math.floor((CREDITI_GIORNO - usati) / costoLivello(livello)));
       $('quota-note').textContent = rimaste
         ? 'Circa ' + rimaste + (rimaste === 1 ? ' analisi disponibile' : ' analisi disponibili') + ' · si ricarica ogni mattina verso le 9'
         : 'Crediti finiti per oggi · si ricaricano domattina verso le 9';
     }
+
+    // ---------- Quanti Shorts cercare ----------
+    let livello = leggi(K_LIVELLO, 'normale');
+    if (!LIVELLI[livello]) livello = 'normale';
+    document.querySelectorAll('input[name="livello"]').forEach((r) => {
+      r.checked = r.value === livello;
+      r.addEventListener('change', () => { livello = r.value; scrivi(K_LIVELLO, livello); mostraCrediti(); });
+    });
 
     // ---------- Chiave ----------
     let chiave = leggi(K_CHIAVE, '');
@@ -481,32 +515,57 @@
       return out;
     }
 
+    // Riduco le parole alla radice (es. "ricette" e "ricetta" → "ricet") e tolgo gli accenti
+    function parole(testo) {
+      return [...new Set((testo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ').split(' ')
+        .filter((p) => p.length >= 2 && !PAROLE_VUOTE.has(p))
+        .map((p) => p.length > 5 ? p.slice(0, 5) : p))];
+    }
+    function stessoArgomento(snippet, chiavi) {
+      if (!chiavi.length) return true;
+      const testo = ' ' + parole([snippet.title, snippet.description, (snippet.tags || []).join(' ')].map(decodifica).join(' ')).join(' ') + ' ';
+      const trovate = chiavi.filter((k) => testo.includes(' ' + k)).length;
+      return trovate >= Math.ceil(chiavi.length / 2);
+    }
+
     async function analizza(termine) {
       const ora = Date.now();
       const dopo = new Date(ora - FINESTRA_GIORNI * GIORNO).toISOString();
 
-      messaggio('Cerco i video su "' + termine + '"…', 'info');
+      // Cerco lo stesso argomento in più modi (più pertinenti, più visti, più nuovi) per trovare più Shorts
+      const nomiOrdine = { relevance: 'più pertinenti', viewCount: 'più visti', date: 'più nuovi' };
+      const pertinenti = new Set();   // trovati con la ricerca "più pertinenti"
       const ids = [];
-      let pagina = null;
-      for (let i = 0; i < PAGINE_RICERCA; i++) {
-        const par = {
-          part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: 'relevance', q: termine,
-          publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
-        };
-        if (pagina) par.pageToken = pagina;
-        const d = await chiama('search', par, 100);
-        (d.items || []).forEach((it) => { if (it.id && it.id.videoId && !ids.includes(it.id.videoId)) ids.push(it.id.videoId); });
-        pagina = d.nextPageToken;
-        if (!pagina) break;
+      for (const [ordineYT, pagine] of LIVELLI[livello].passaggi) {
+        messaggio('Cerco gli Shorts ' + nomiOrdine[ordineYT] + ' su "' + termine + '"…', 'info');
+        let pagina = null;
+        for (let i = 0; i < pagine; i++) {
+          const par = {
+            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: termine,
+            publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
+          };
+          if (pagina) par.pageToken = pagina;
+          const d = await chiama('search', par, 100);
+          (d.items || []).forEach((it) => {
+            const id = it.id && it.id.videoId;
+            if (!id) return;
+            if (!ids.includes(id)) ids.push(id);
+            if (ordineYT === 'relevance') pertinenti.add(id);
+          });
+          pagina = d.nextPageToken;
+          if (!pagina) break;
+        }
       }
       if (!ids.length) return [];
+      const paroleChiave = parole(termine);
 
       messaggio('Leggo visualizzazioni, like e commenti…', 'info');
       const video = [];
       for (const gruppo of aGruppi(ids, 50)) {
         const d = await chiama('videos', {
           part: 'snippet,statistics,contentDetails', id: gruppo.join(','),
-          fields: 'items(id,snippet(title,channelId,channelTitle,publishedAt,thumbnails/medium/url),statistics(viewCount,likeCount,commentCount),contentDetails/duration)',
+          fields: 'items(id,snippet(title,description,tags,channelId,channelTitle,publishedAt,thumbnails/medium/url),statistics(viewCount,likeCount,commentCount),contentDetails/duration)',
         }, 1);
         video.push(...(d.items || []));
       }
@@ -529,6 +588,8 @@
         // YouTube non ha un filtro "solo Shorts": cerco i video brevi e tengo quelli fino a 3 minuti
         .filter((v) => v.statistics && v.statistics.viewCount != null)
         .filter((v) => { const d = durataSecondi(v.contentDetails && v.contentDetails.duration); return d != null && d > 0 && d <= DURATA_MAX_SHORT; })
+        // quelli trovati come "più visti" o "più nuovi" li tengo solo se parlano davvero dell'argomento
+        .filter((v) => pertinenti.has(v.id) || stessoArgomento(v.snippet, paroleChiave))
         .map((v) => {
           const data = new Date(v.snippet.publishedAt);
           const giorni = Math.max((ora - data) / GIORNO, 0.5);
@@ -536,6 +597,7 @@
           const isc = iscritti[v.snippet.channelId];
           return {
             id: v.id,
+            base: pertinenti.has(v.id),
             titolo: decodifica(v.snippet.title),
             canale: decodifica(v.snippet.channelTitle),
             thumb: v.snippet.thumbnails && v.snippet.thumbnails.medium ? v.snippet.thumbnails.medium.url : '',
@@ -557,7 +619,8 @@
     function settimane(video) {
       const ora = Date.now();
       const conta = new Array(12).fill(0); // indice 0 = 12 settimane fa, 11 = ultima settimana
-      video.forEach((v) => {
+      // conto solo gli Shorts "più pertinenti": quelli "più nuovi" gonfierebbero le ultime settimane
+      video.filter((v) => v.base).forEach((v) => {
         const sett = Math.floor((ora - v.data) / (7 * GIORNO));
         if (sett >= 0 && sett < 12) conta[11 - sett]++;
       });
@@ -569,7 +632,7 @@
       // 1. Crescita: media ultime 4 settimane contro media delle 8 prima
       const recenti = sett.slice(8).reduce((a, s) => a + s.n, 0) / 4;
       const prima = sett.slice(0, 8).reduce((a, s) => a + s.n, 0) / 8;
-      if (video.length >= 5) {
+      if (video.filter((v) => v.base).length >= 5) {
         const r = (recenti + 0.5) / (prima + 0.5);
         const perc = Math.round((r - 1) * 100);
         segnali.push({
