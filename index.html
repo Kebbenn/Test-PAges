@@ -224,7 +224,7 @@
     <header>
       <div>
         <h1>Radar Nicchie</h1>
-        <p class="sub">Scrivi una nicchia e scopri se su YouTube sta diventando virale.</p>
+        <p class="sub">Scrivi una nicchia e scopri se sta diventando virale su YouTube Shorts.</p>
       </div>
       <div class="quota" aria-live="polite">
         <div class="quota-top">
@@ -255,7 +255,7 @@
         <button id="search-btn" type="submit">Analizza</button>
       </form>
       <div class="search-note">
-        <span>Analizzo i 100 video più pertinenti usciti negli ultimi 3 mesi.</span>
+        <span>Analizzo solo gli Shorts (fino a 3 minuti) più pertinenti usciti negli ultimi 3 mesi.</span>
         <span>Ogni analisi usa circa 205 crediti.</span>
       </div>
     </section>
@@ -284,7 +284,7 @@
           <section class="card">
             <div class="card-head">
               <span class="label">1 · Settimane</span>
-              <h2>Video usciti ogni settimana</h2>
+              <h2>Shorts usciti ogni settimana</h2>
               <p>Ultime 12 settimane. Se le colonne a destra sono più alte, la nicchia cresce.</p>
             </div>
             <div class="legend"><span><i></i>Ultime 4 settimane</span><span><i class="old"></i>Settimane prima</span></div>
@@ -295,7 +295,7 @@
             <div class="card-head">
               <span class="label">2 · Velocità</span>
               <h2>Visualizzazioni al giorno di ogni video</h2>
-              <p>Ogni punto è un video. Più è in alto, più corre veloce. Premi un punto per aprirlo.</p>
+              <p>Ogni punto è uno Short. Più è in alto, più corre veloce. Premi un punto per aprirlo.</p>
             </div>
             <div class="legend"><span><i class="round"></i>Uscito nell'ultimo mese</span><span><i class="round old"></i>Più vecchio</span></div>
             <div class="chart" id="chart-speed"></div>
@@ -315,7 +315,7 @@
           <div class="table-head">
             <div class="card-head">
               <span class="label">Elenco completo</span>
-              <h2 id="table-title">Tutti i video trovati</h2>
+              <h2 id="table-title">Tutti gli Shorts trovati</h2>
             </div>
             <div class="actions">
               <button id="dl-current" type="button">Scarica questa ricerca</button>
@@ -356,6 +356,8 @@
     const K_CREDITI = 'radar-crediti';
     const K_ARCHIVIO = 'radar-archivio';
     const SVG = 'http://www.w3.org/2000/svg';
+    const DURATA_MAX_SHORT = 180;       // gli Shorts durano al massimo 3 minuti
+    const linkVideo = (id) => 'https://www.youtube.com/shorts/' + encodeURIComponent(id);
 
     const $ = (id) => document.getElementById(id);
 
@@ -488,7 +490,7 @@
       let pagina = null;
       for (let i = 0; i < PAGINE_RICERCA; i++) {
         const par = {
-          part: 'id', type: 'video', maxResults: 50, order: 'relevance', q: termine,
+          part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: 'relevance', q: termine,
           publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
         };
         if (pagina) par.pageToken = pagina;
@@ -524,7 +526,9 @@
       }
 
       return video
+        // YouTube non ha un filtro "solo Shorts": cerco i video brevi e tengo quelli fino a 3 minuti
         .filter((v) => v.statistics && v.statistics.viewCount != null)
+        .filter((v) => { const d = durataSecondi(v.contentDetails && v.contentDetails.duration); return d != null && d > 0 && d <= DURATA_MAX_SHORT; })
         .map((v) => {
           const data = new Date(v.snippet.publishedAt);
           const giorni = Math.max((ora - data) / GIORNO, 0.5);
@@ -715,7 +719,7 @@
       // i punti più veloci in cima, così restano visibili
       [...dati].sort((a, b) => a.vpd - b.vpd).forEach((v) => {
         const cx = x(v.giorni), cy = y(v.vpd);
-        const link = el('a', { href: 'https://www.youtube.com/watch?v=' + v.id, target: '_blank', rel: 'noopener' }, svg);
+        const link = el('a', { href: linkVideo(v.id), target: '_blank', rel: 'noopener' }, svg);
         const hit = el('circle', { cx, cy, r: 11, class: 'hit', tabindex: 0 }, link);
         el('circle', { cx, cy, r: 4.5, class: 'dot' + (v.giorni <= 28 ? '' : ' old'), stroke: 'var(--surface)', 'stroke-width': 1.5 }, link);
         const info = (e) => mostraTip(e, compatto(v.vpd) + ' al giorno', [v.titolo, v.canale + ' · ' + compatto(v.views) + ' visualizzazioni']);
@@ -738,7 +742,7 @@
       top.forEach((v) => {
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(v.id);
+        a.href = linkVideo(v.id);
         a.target = '_blank'; a.rel = 'noopener';
         const t = document.createElement('span'); t.className = 't'; t.textContent = v.titolo;
         const x = document.createElement('span'); x.className = 'x num';
@@ -795,7 +799,7 @@
         const img = document.createElement('img'); img.src = v.thumb; img.alt = ''; img.loading = 'lazy';
         const info = document.createElement('div'); info.style.minWidth = '0';
         const a = document.createElement('a');
-        a.href = 'https://www.youtube.com/watch?v=' + encodeURIComponent(v.id); a.target = '_blank'; a.rel = 'noopener';
+        a.href = linkVideo(v.id); a.target = '_blank'; a.rel = 'noopener';
         a.textContent = v.titolo;
         const sm = document.createElement('small');
         sm.textContent = v.canale + (v.durata != null ? ' · ' + durataTesto(v.durata) : '');
@@ -850,7 +854,7 @@
       const linee = [intest.join(';')];
       righe.forEach((r) => {
         linee.push([
-          r.ricerca, r.titolo, r.canale, 'https://www.youtube.com/watch?v=' + r.id,
+          r.ricerca, r.titolo, r.canale, linkVideo(r.id),
           new Date(r.data).toLocaleDateString('it-IT'), Math.floor(r.giorni), durataTesto(r.durata),
           r.views, r.vpd, r.likes, r.commenti, r.iscritti, r.rapporto,
           r.analizzato ? new Date(r.analizzato).toLocaleDateString('it-IT') : new Date().toLocaleDateString('it-IT'),
@@ -883,7 +887,7 @@
       termometro(calcolaSegnali(videoAttuali, settimaneAttuali));
       disegnaGrafici();
       classifica($('rank'), videoAttuali);
-      $('table-title').textContent = videoAttuali.length + ' video trovati per "' + ricercaAttuale + '"';
+      $('table-title').textContent = videoAttuali.length + ' Shorts trovati per "' + ricercaAttuale + '"';
       tabella();
     }
 
@@ -913,7 +917,7 @@
       try {
         const video = await analizza(termine);
         if (!video.length) {
-          messaggio('Non ho trovato video usciti negli ultimi 3 mesi per "' + termine + '". Prova con altre parole.', 'info');
+          messaggio('Non ho trovato Shorts usciti negli ultimi 3 mesi per "' + termine + '". Prova con altre parole.', 'info');
           return;
         }
         videoAttuali = video;
