@@ -164,6 +164,7 @@
       border: 1px solid var(--line); background: var(--surface); color: var(--ink);
     }
     .field input { padding: 11px 14px; font-size: .95rem; }
+    .field.must { max-width: 520px; }
     .check { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--ink-2); cursor: pointer; justify-self: start; }
     .check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; flex: none; padding: 0; }
     .check b { color: var(--ink); font-weight: 600; }
@@ -414,6 +415,10 @@
         <input id="search-input" type="search" placeholder="Es. ricette air fryer, allenamento a casa…" required>
         <button id="search-btn" type="submit">Analizza</button>
       </form>
+      <label class="field must">
+        <span class="label">Il titolo deve contenere anche (facoltativo)</span>
+        <input id="must-input" type="text" placeholder="Una parola o una frase, es. pizza oppure air fryer" autocomplete="off">
+      </label>
       <label class="check"><input type="checkbox" class="solo-rank" checked> Solo Shorts con <b>rank</b> o <b>ranking</b> nel titolo</label>
       <div class="depth" role="radiogroup" aria-label="Quanti Shorts cercare">
         <span class="label">Quanti Shorts cercare</span>
@@ -424,6 +429,7 @@
       <div class="search-note">
         <span>Cerco solo Shorts (fino a 3 minuti) di qualsiasi periodo: i più pertinenti, i più visti e i più nuovi.
           Con la casella attiva tengo solo quelli con "rank" o "ranking" nel titolo.
+          Se scrivi una frase obbligatoria, tengo solo gli Shorts che la hanno nel titolo.
           Scarto quelli che non parlano del tuo argomento.</span>
       </div>
     </section>
@@ -767,6 +773,18 @@
     const conRank = (q) => (soloRank ? (q ? q + ' ' : '') + 'rank|ranking' : q);
     const tagRank = (t) => soloRank && /^rank(s|ed|ing|ings)?$/.test(t);
 
+    // ---------- Frase obbligatoria nel titolo ----------
+    const K_FRASE = 'radar-frase-titolo';
+    // tolgo accenti, maiuscole e spazi doppi, così "Air  Fryer" e "air fryer" sono uguali
+    const normalizza = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+    // la frase deve comparire intera e non dentro un'altra parola: "pizza" va bene in "Ranking pizza", non in "pizzaiolo"
+    function contieneFrase(titolo, frase) {
+      const f = normalizza(frase);
+      if (!f) return true;
+      const esc = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp('(^|[^\\p{L}\\p{N}])' + esc + '($|[^\\p{L}\\p{N}])', 'u').test(normalizza(titolo));
+    }
+
     // Riduco le parole alla radice (es. "ricette" e "ricetta" → "ricet") e tolgo gli accenti
     function parole(testo) {
       return [...new Set((testo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -781,7 +799,7 @@
       return trovate >= Math.ceil(chiavi.length / 2);
     }
 
-    async function analizza(termine) {
+    async function analizza(termine, frase) {
       const ora = Date.now();
 
       // Cerco lo stesso argomento in più modi (più pertinenti, più visti, più nuovi) per trovare più Shorts
@@ -794,7 +812,7 @@
         let pagina = null;
         for (let i = 0; i < pagine; i++) {
           const par = {
-            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: conRank(termine),
+            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: conRank(frase ? termine + ' ' + frase : termine),
             fields: 'nextPageToken,items/id/videoId',
           };
           if (pagina) par.pageToken = pagina;
@@ -846,6 +864,7 @@
         // quelli trovati come "più visti" o "più nuovi" li tengo solo se parlano davvero dell'argomento
         .filter((v) => pertinenti.has(v.id) || stessoArgomento(v.snippet, paroleChiave))
         .filter((v) => !soloRank || haRank(decodifica(v.snippet.title)))
+        .filter((v) => contieneFrase(decodifica(v.snippet.title), frase))
         .map((v) => {
           const data = new Date(v.snippet.publishedAt);
           const giorni = Math.max((ora - data) / GIORNO, 0.5);
@@ -1878,6 +1897,8 @@
     $('search-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const termine = $('search-input').value.trim();
+      const frase = $('must-input').value.trim();
+      scrivi(K_FRASE, frase);
       if (!termine) return;
       if (!chiave) {
         $('key-box').open = true;
@@ -1886,15 +1907,17 @@
       }
       $('search-btn').disabled = true;
       try {
-        const video = await analizza(termine);
+        const video = await analizza(termine, frase);
         if (!video.length) {
-          messaggio((soloRank ? 'Non ho trovato Shorts con "rank" o "ranking" nel titolo per "' : 'Non ho trovato Shorts per "') + termine + '". Prova con altre parole.', 'info');
+          const regole = [soloRank ? '"rank" o "ranking"' : '', frase ? '"' + frase + '"' : ''].filter(Boolean).join(' e ');
+          messaggio((regole ? 'Non ho trovato Shorts con ' + regole + ' nel titolo per "' : 'Non ho trovato Shorts per "') + termine + '". ' +
+            (frase ? 'Prova a togliere o cambiare la frase obbligatoria.' : 'Prova con altre parole.'), 'info');
           return;
         }
         videoAttuali = video;
-        ricercaAttuale = termine;
+        ricercaAttuale = frase ? termine + ' + titolo con "' + frase + '"' : termine;
         ordine = 'views';
-        salvaInArchivio(termine, video);
+        salvaInArchivio(ricercaAttuale, video);
         messaggio('', '');
         mostraRisultati();
       } catch (err) {
@@ -1902,6 +1925,10 @@
       } finally {
         $('search-btn').disabled = false;
       }
+    });
+
+    $('must-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); $('search-form').requestSubmit(); }
     });
 
     document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
@@ -1977,6 +2004,7 @@
 
     // ---------- Avvio ----------
     mostraChiave();
+    $('must-input').value = leggi(K_FRASE, '') || '';
     mostraCrediti();
     aggiornaBottoni();
     mostraCostoScopri();
