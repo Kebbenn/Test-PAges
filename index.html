@@ -622,7 +622,7 @@
             <li>Vai su <b>supabase.com</b>, premi <b>Start your project</b> e crea un account gratuito.</li>
             <li>Premi <b>New project</b>, dagli un nome (es. radar), scegli una password e la zona <b>Europe</b>.</li>
             <li>A sinistra apri <b>SQL Editor</b>, premi <b>New query</b>, incolla il codice qui sotto e premi <b>Run</b>.</li>
-            <li>A sinistra apri <b>Project Settings</b>, poi <b>API</b>: copia <b>Project URL</b> e la chiave <b>anon public</b> qui sotto.</li>
+            <li>A sinistra apri <b>Project Settings</b>, poi <b>API Keys</b>: copia la chiave <b>anon public</b> (oppure <b>Publishable key</b>) qui sotto. Il Project URL è già scritto. Non usare mai la chiave <b>service_role</b> o <b>secret</b>.</li>
             <li>Facoltativo: in <b>Authentication</b>, <b>Sign In / Providers</b>, <b>Email</b>, togli <b>Confirm email</b> per entrare subito senza conferma.</li>
           </ol>
           <div class="sql-box">
@@ -661,7 +661,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         <form id="db-config" class="db-form">
           <label class="field grow"><span class="label">Project URL</span>
             <input id="db-url" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off"></label>
-          <label class="field grow"><span class="label">Chiave anon public</span>
+          <label class="field grow"><span class="label">Chiave anon public / publishable</span>
             <input id="db-key" type="password" placeholder="eyJhbGciOi…" autocomplete="off"></label>
           <button type="submit">Collega</button>
         </form>
@@ -2575,6 +2575,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const K_DB_CONF = 'radar-db-config';
     const K_DB_SESSIONE = 'radar-db-sessione';
     const K_DB_AUTO = 'radar-db-auto';
+    // il database di Radar Nicchie: l'indirizzo è già scritto qui, così su ogni PC basta la chiave pubblica
+    const DB_URL_PREDEFINITO = 'https://omqusyuzffmwrhrvyitm.supabase.co';
     let dbConf = leggi(K_DB_CONF, null);
     let dbSessione = leggi(K_DB_SESSIONE, null);
     let dbTutte = false;
@@ -2635,6 +2637,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
     function mostraDb() {
       const collegato = !!(dbConf && dbConf.url && dbConf.chiave);
+      if (!collegato && !$('db-url').value) $('db-url').value = DB_URL_PREDEFINITO;
       $('db-setup').hidden = collegato;
       $('db-login').hidden = !collegato || !!dbSessione;
       $('db-on').hidden = !collegato || !dbSessione;
