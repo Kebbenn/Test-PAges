@@ -277,6 +277,29 @@
     .db-list .b button { padding: 7px 12px; font-size: .82rem; }
     @media (max-width: 560px) { .db-list li { grid-template-columns: 1fr; } }
 
+    /* Verdetto con punteggio finale */
+    .verdict-main { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 24px; align-items: center; }
+    .verdict-txt { display: grid; gap: 6px; min-width: 0; }
+    .verdict-parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .verdict-parts .chip { font-size: .78rem; padding: 3px 10px; }
+    .verdict-parts .chip.debole { color: var(--warn); border-color: currentColor; }
+    @media (max-width: 560px) { .verdict-main { grid-template-columns: 1fr; } }
+
+    /* Titolo di gruppo tra le sezioni */
+    .sec-title { display: grid; gap: 2px; padding: 8px 4px 0; }
+    .sec-title h2 { font-size: 1.3rem; }
+
+    /* Riquadri con percentuali (colpi, coinvolgimento) */
+    .hits { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+    .hit-tile { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+    .hit-tile .v { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1;
+      background: linear-gradient(120deg, var(--g1), var(--g2) 60%, var(--g3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hit-tile p { font-size: .8rem; color: var(--muted); }
+    .rank.formats div { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 6px 0; }
+    .rank.formats .t { font-weight: 600; min-width: 0; white-space: normal; }
+    .rank.formats .es { grid-column: 1 / -1; font-size: .8rem; color: var(--g1); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rank.formats .es:hover { text-decoration: underline; }
+
     /* Verdetto finale */
     .verdict {
       background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
@@ -417,7 +440,7 @@
     }
     @keyframes scorri { to { background-position: 300% 0; } }
     h1.grad-text { font-size: 2.1rem; letter-spacing: -0.035em; }
-    .score-big span, .potential .big, .kpi .v {
+    .score-big span, .potential .big, .kpi .v, .verdict-score span {
       background: linear-gradient(120deg, var(--g1), var(--g2) 60%, var(--g3));
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
@@ -665,10 +688,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     <div id="msg" hidden></div>
 
     <section class="intro" id="intro">
-      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg></span><span class="label">Termometro</span><h2>Un voto da 0 a 100</h2><p>Riassume in un numero se la nicchia sta crescendo.</p></div>
-      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V12M12 20V6M19 20v-9"/></svg></span><span class="label">Settimane</span><h2>Quanti video escono</h2><p>Se ogni settimana escono più video, l'argomento si sta scaldando.</p></div>
-      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span><span class="label">Velocità</span><h2>Visualizzazioni al giorno</h2><p>Video nuovi che corrono veloci sono il segnale che è caldo adesso.</p></div>
-      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 4l1 2 2 .3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1L14 6.3l2-.3z"/></svg></span><span class="label">Piccoli canali</span><h2>Chi fa il botto</h2><p>Canali piccoli con tante visualizzazioni: è l'argomento che tira.</p></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg></span><span class="label">Vale la pena?</span><h2>Un punteggio da 0 a 100</h2><p>Mette insieme crescita, spazio per i piccoli e possibilità di ripetere il successo.</p></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V12M12 20V6M19 20v-9"/></svg></span><span class="label">Trend</span><h2>Sta esplodendo o è passato?</h2><p>Confronta gli ultimi giorni, settimane e mesi con il periodo prima.</p></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span><span class="label">Replicabilità</span><h2>Funziona sempre o è fortuna?</h2><p>Guarda se chi ci prova più volte fa buoni numeri, e se lo spazio si sta saturando.</p></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 4l1 2 2 .3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1L14 6.3l2-.3z"/></svg></span><span class="label">Come farlo</span><h2>Durata, titoli, pubblico</h2><p>Quanto deve durare, quali parole usare nel titolo e quanto il pubblico partecipa.</p></div>
     </section>
 
     <div id="results" hidden>
@@ -683,8 +706,14 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         </div>
         <section class="verdict" id="verdict">
           <span class="label">Vale la pena?</span>
-          <h2 id="verdict-title">—</h2>
-          <p id="verdict-text"></p>
+          <div class="verdict-main">
+            <div class="score-big num verdict-score"><span id="final-score">—</span><small>/100</small></div>
+            <div class="verdict-txt">
+              <h2 id="verdict-title">—</h2>
+              <p id="verdict-text"></p>
+              <div class="verdict-parts" id="verdict-parts"></div>
+            </div>
+          </div>
         </section>
 
         <section class="thermo">
@@ -705,6 +734,16 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             <span class="muted" style="font-size:.85rem">Un piccolo canale può farcela?</span>
           </div>
           <div class="signals" id="opp-signals"></div>
+        </section>
+
+        <section class="thermo">
+          <div class="score">
+            <span class="label">Replicabilità</span>
+            <div class="score-big num"><span id="rep-score">0</span><small>/100</small></div>
+            <span class="pill neutral" id="rep-pill">—</span>
+            <span class="muted" style="font-size:.85rem">Se lo copio, funziona anche per me?</span>
+          </div>
+          <div class="signals" id="rep-signals"></div>
         </section>
 
         <section class="card" id="trend">
@@ -805,6 +844,78 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
               <p>Se ci sono canali nuovi che vanno bene, puoi partire da zero anche tu.</p>
             </div>
             <div id="newch" style="display:grid; gap:12px"></div>
+          </section>
+        </div>
+
+        <div class="sec-title">
+          <span class="label">Si può replicare? Come farlo?</span>
+          <h2>Prima di copiare un argomento, guarda qui</h2>
+        </div>
+
+        <div class="charts">
+          <section class="card wide">
+            <div class="card-head">
+              <span class="label">8 · Funziona sempre o è fortuna?</span>
+              <h2>Gli Shorts dei canali che ci hanno provato più volte</h2>
+              <p>Ogni riga è un canale con almeno 3 Shorts su questo argomento, ogni pallino è uno Short. Se i pallini pieni (sopra la media) sono tanti, il successo si ripete.</p>
+            </div>
+            <div class="legend"><span><i class="round"></i>Sopra la media della nicchia</span><span><i class="round old"></i>Sotto la media</span></div>
+            <div class="chart" id="consistency" style="display:grid; gap:10px"></div>
+          </section>
+
+          <section class="card wide">
+            <div class="card-head">
+              <span class="label">9 · Si sta saturando?</span>
+              <h2>Quanti Shorts escono e quante visualizzazioni fa ognuno</h2>
+              <p>Se escono sempre più Shorts ma ognuno fa meno visualizzazioni, troppa gente lo sta copiando.</p>
+            </div>
+            <div class="trend-charts">
+              <div>
+                <h3>Shorts usciti ogni mese</h3>
+                <div class="chart" id="chart-sat-n"></div>
+              </div>
+              <div>
+                <h3>Visualizzazioni tipiche per Short</h3>
+                <div class="chart" id="chart-sat-v"></div>
+              </div>
+            </div>
+            <p class="muted" style="font-size:.82rem" id="sat-note"></p>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">10 · Percentuale di "colpi"</span>
+              <h2>Quante probabilità ci sono di fare il botto</h2>
+              <p>Su tutti gli Shorts più pertinenti, quanti superano queste soglie di visualizzazioni.</p>
+            </div>
+            <div id="hits" style="display:grid; gap:12px"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">11 · Durata migliore</span>
+              <h2>Quanto deve durare il tuo Short</h2>
+              <p>Visualizzazioni tipiche per ogni durata. La colonna piena è la durata che funziona meglio.</p>
+            </div>
+            <div class="chart" id="chart-duration"></div>
+            <p class="big-line" id="duration-text"></p>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">12 · Formato del titolo</span>
+              <h2>Le parole dei titoli che funzionano</h2>
+            </div>
+            <div id="formats" style="display:grid; gap:10px"></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <span class="label">13 · Coinvolgimento</span>
+              <h2>Quanto il pubblico partecipa</h2>
+              <p>Like e commenti ogni 1.000 visualizzazioni: più sono alti, più il pubblico è appassionato.</p>
+            </div>
+            <div id="engagement" style="display:grid; gap:12px"></div>
           </section>
         </div>
 
@@ -1016,13 +1127,17 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const linkVideo = (id) => 'https://www.youtube.com/shorts/' + encodeURIComponent(id);
 
     const $ = (id) => document.getElementById(id);
+    // Il momento in cui è stata fatta la ricerca: i calcoli lo usano al posto di "adesso",
+    // così una ricerca riaperta dal database giorni dopo dà gli stessi risultati di quel giorno.
+    let oraAnalisi = Date.now();
+    let livelloRicerca = null;   // Veloce / Normale / Profonda usato per la ricerca mostrata
 
     // ---------- Memoria del browser (sempre protetta) ----------
     function leggi(k, def) {
       try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
     }
     function scrivi(k, v) {
-      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* memoria piena o bloccata */ }
+      try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; /* memoria piena o bloccata */ }
     }
     function cancella(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
@@ -1153,18 +1268,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const conRank = (q) => (soloRank ? (q ? q + ' ' : '') + 'rank|ranking' : q);
     const tagRank = (t) => soloRank && /^rank(s|ed|ing|ings)?$/.test(t);
 
-    // ---------- Frase obbligatoria nel titolo ----------
-    const K_FRASE = 'radar-frase-titolo';
-    // tolgo accenti, maiuscole e spazi doppi, così "Air  Fryer" e "air fryer" sono uguali
-    const normalizza = (t) => (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
-    // la frase deve comparire intera e non dentro un'altra parola: "pizza" va bene in "Ranking pizza", non in "pizzaiolo"
-    function contieneFrase(titolo, frase) {
-      const f = normalizza(frase);
-      if (!f) return true;
-      const esc = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return new RegExp('(^|[^\\p{L}\\p{N}])' + esc + '($|[^\\p{L}\\p{N}])', 'u').test(normalizza(titolo));
-    }
-
     // Riduco le parole alla radice (es. "ricette" e "ricetta" → "ricet") e tolgo gli accenti
     function parole(testo) {
       return [...new Set((testo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -1179,8 +1282,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       return trovate >= Math.ceil(chiavi.length / 2);
     }
 
-    async function analizza(termine, frase) {
-      const ora = Date.now();
+    async function analizza(termine, ora) {
 
       // Cerco lo stesso argomento in più modi (più pertinenti, più visti, più nuovi) per trovare più Shorts
       const nomiOrdine = { relevance: 'più pertinenti', viewCount: 'più visti', date: 'più nuovi' };
@@ -1192,7 +1294,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         let pagina = null;
         for (let i = 0; i < pagine; i++) {
           const par = {
-            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: conRank(frase ? termine + ' ' + frase : termine),
+            part: 'id', type: 'video', videoDuration: 'short', maxResults: 50, order: ordineYT, q: conRank(termine),
             fields: 'nextPageToken,items/id/videoId',
           };
           if (pagina) par.pageToken = pagina;
@@ -1244,7 +1346,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         // quelli trovati come "più visti" o "più nuovi" li tengo solo se parlano davvero dell'argomento
         .filter((v) => pertinenti.has(v.id) || stessoArgomento(v.snippet, paroleChiave))
         .filter((v) => !soloRank || haRank(decodifica(v.snippet.title)))
-        .filter((v) => contieneFrase(decodifica(v.snippet.title), frase))
         .map((v) => {
           const data = new Date(v.snippet.publishedAt);
           const giorni = Math.max((ora - data) / GIORNO, 0.5);
@@ -1275,7 +1376,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     // ---------- Calcolo dei segnali ----------
     const limita = (x) => Math.max(0, Math.min(100, Math.round(x)));
     function settimane(video) {
-      const ora = Date.now();
+      const ora = oraAnalisi;
       const conta = new Array(12).fill(0); // indice 0 = 12 settimane fa, 11 = ultima settimana
       // conto solo gli Shorts "più pertinenti": quelli "più nuovi" gonfierebbero le ultime settimane
       video.filter((v) => v.base).forEach((v) => {
@@ -1290,7 +1391,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       // 1. Crescita: media ultime 4 settimane contro media delle 8 prima
       const recenti = sett.slice(8).reduce((a, s) => a + s.n, 0) / 4;
       const prima = sett.slice(0, 8).reduce((a, s) => a + s.n, 0) / 8;
-      if (video.filter((v) => v.base).length >= 5) {
+      // servono almeno 5 Shorts "più pertinenti" usciti nelle ultime 12 settimane, altrimenti il confronto non dice niente
+      if (sett.reduce((a, s) => a + s.n, 0) >= 5) {
         const r = (recenti + 0.5) / (prima + 0.5);
         const perc = Math.round((r - 1) * 100);
         segnali.push({
@@ -1348,7 +1450,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     }
     function canaliNuovi(video) {
       const soglia = mediana(video.map((v) => v.views));
-      const limite = Date.now() - GIORNI_NUOVO * GIORNO;
+      const limite = oraAnalisi - GIORNI_NUOVO * GIORNO;
       const canali = perCanale(video);
       const nuovi = canali.filter((c) => c.nato != null && c.nato >= limite)
         .map((c) => Object.assign(c, { vaBene: c.migliore.views >= soglia }))
@@ -1399,16 +1501,217 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (v >= 30) return { testo: 'Difficile', cls: 'warn' };
       return { testo: 'Molto difficile', cls: 'bad' };
     }
-    function verdetto(viral, opp) {
-      if (viral == null || opp == null)
-        return { cls: 'neutral', titolo: 'Non riesco a dirlo', testo: 'Ho trovato troppo pochi Shorts. Prova con una parola più generica o con la ricerca "Profonda".' };
-      if (viral >= 50 && opp >= 50)
-        return { cls: 'good', titolo: 'Sì, vale la pena', testo: 'L\'argomento sta crescendo e anche i canali piccoli riescono a farsi vedere.' };
-      if (opp >= 50)
-        return { cls: 'good', titolo: 'Sì, ma senza fretta', testo: 'Non sta esplodendo, ma i canali piccoli hanno spazio. Va bene se l\'argomento ti piace e puoi farlo con costanza.' };
-      if (viral >= 50)
-        return { cls: 'warn', titolo: 'Forse', testo: 'L\'argomento cresce, ma le visualizzazioni vanno soprattutto ai canali grandi. Ti serve un\'idea che ti distingua.' };
-      return { cls: 'bad', titolo: 'Meglio cercare altro', testo: 'L\'argomento non cresce e i canali piccoli fanno fatica a farsi vedere.' };
+    // ---------- Replicabilità: se lo copio, funziona anche per me? ----------
+    const RECENTE_MIN = 7;   // gli Shorts usciti da meno di 7 giorni stanno ancora crescendo: nei confronti non li conto
+
+    // 8. Funziona sempre o è fortuna? I canali che hanno fatto almeno 3 Shorts vanno spesso sopra la media?
+    function costanzaCanali(video) {
+      const soglia = mediana(video.map((v) => v.views));
+      const righe = perCanale(video).filter((c) => c.shorts >= 3).map((c) => {
+        const suoi = video.filter((v) => v.canaleId === c.id).sort((a, b) => a.views - b.views);
+        const sopra = suoi.filter((v) => v.views >= soglia).length;
+        return { c, suoi, sopra, costante: sopra * 2 >= suoi.length };
+      }).sort((a, b) => b.suoi.length - a.suoi.length || b.c.views - a.c.views);
+      return { soglia, righe, costanti: righe.filter((r) => r.costante).length };
+    }
+
+    // 9. Si sta saturando? Confronto gli ultimi 3 mesi con i 3 mesi prima (senza gli Shorts degli ultimi 7 giorni)
+    function saturazione(video) {
+      const dati = video.filter((v) => v.campione);
+      const maturi = (l) => l.filter((v) => v.giorni >= RECENTE_MIN);
+      const recenti = dati.filter((v) => v.giorni <= 97);
+      const prima = dati.filter((v) => v.giorni > 97 && v.giorni <= 187);
+      const medRec = mediana(maturi(recenti).map((v) => v.views));
+      const medPre = mediana(maturi(prima).map((v) => v.views));
+      const colonne = colonneTempo('mesi').map((c) => {
+        const dentro = dati.filter((v) => v.data >= c.inizio && v.data < c.fine);
+        const m = maturi(dentro);
+        return Object.assign(c, { shorts: dentro.length, tipico: m.length ? mediana(m.map((v) => v.views)) : 0, nMaturi: m.length });
+      });
+      return { colonne, nRec: recenti.length, nPre: prima.length, medRec, medPre,
+        valido: maturi(recenti).length >= 3 && maturi(prima).length >= 3 };
+    }
+
+    // 10. Percentuale di "colpi": quanti Shorts superano 10k, 100k e 1 milione
+    function colpi(video) {
+      // uso gli Shorts "più pertinenti": quelli trovati come "più visti" gonfierebbero la percentuale
+      let base = video.filter((v) => v.base && v.giorni >= RECENTE_MIN);
+      if (base.length < 10) base = video.filter((v) => v.giorni >= RECENTE_MIN);
+      const soglie = [1e4, 1e5, 1e6].map((s) => ({ s, n: base.filter((v) => v.views >= s).length }));
+      return { base, soglie, quota100k: base.length ? soglie[1].n / base.length : null };
+    }
+
+    function calcolaReplicabilita(video) {
+      const segnali = [];
+      const cs = costanzaCanali(video);
+      if (cs.righe.length >= 3) {
+        segnali.push({
+          nome: 'Successo che si ripete', peso: 0.4, voto: limita(cs.costanti / cs.righe.length * 100),
+          testo: cs.costanti + ' canali su ' + cs.righe.length + ' che hanno fatto almeno 3 Shorts vanno spesso sopra la media.',
+        });
+      }
+      const sat = saturazione(video);
+      if (sat.valido) {
+        const r = sat.medRec / sat.medPre;
+        const piuShorts = sat.nRec > sat.nPre * 1.2;
+        segnali.push({
+          nome: 'Pubblico che regge', peso: 0.3, voto: limita(50 + 50 * Math.log2(r)),
+          testo: piuShorts && r < 0.75
+            ? 'Escono più Shorts ma ognuno fa meno visualizzazioni (' + compatto(sat.medRec) + ' contro ' + compatto(sat.medPre) + '): si sta saturando.'
+            : r >= 0.9
+              ? 'Negli ultimi 3 mesi uno Short fa di solito ' + compatto(sat.medRec) + ' visualizzazioni, contro ' + compatto(sat.medPre) + ' prima: il pubblico c\'è ancora.'
+              : 'Negli ultimi 3 mesi uno Short fa di solito ' + compatto(sat.medRec) + ' visualizzazioni, contro ' + compatto(sat.medPre) + ' prima: stanno calando.',
+        });
+      }
+      const cp = colpi(video);
+      if (cp.base.length >= 10) {
+        segnali.push({
+          nome: 'Probabilità di fare il botto', peso: 0.3, voto: limita(cp.quota100k * 500),
+          testo: cp.soglie[1].n + ' Shorts su ' + cp.base.length + ' (' + Math.round(cp.quota100k * 100) + '%) superano le 100.000 visualizzazioni.',
+        });
+      }
+      const pesi = segnali.reduce((a, x) => a + x.peso, 0);
+      const totale = pesi ? Math.round(segnali.reduce((a, x) => a + x.voto * x.peso, 0) / pesi) : null;
+      return { segnali, totale };
+    }
+    function giudizioReplicabilita(v) {
+      if (v == null) return { testo: 'Dati insufficienti', cls: 'neutral' };
+      if (v >= 70) return { testo: 'Si ripete spesso', cls: 'good' };
+      if (v >= 50) return { testo: 'Abbastanza ripetibile', cls: 'good' };
+      if (v >= 30) return { testo: 'Conta la fortuna', cls: 'warn' };
+      return { testo: 'Molto casuale', cls: 'bad' };
+    }
+
+    // 11. Durata migliore
+    const FASCE_DURATA = [
+      { nome: 'Sotto 15 s', max: 15 },
+      { nome: '15 – 30 s', max: 30 },
+      { nome: '30 – 60 s', max: 60 },
+      { nome: 'Oltre 1 min', max: Infinity },
+    ];
+    function durate(video) {
+      const maturi = video.filter((v) => v.durata != null && v.giorni >= RECENTE_MIN);
+      const fasce = FASCE_DURATA.map((f, i) => {
+        const min = i ? FASCE_DURATA[i - 1].max : 0;
+        const dentro = maturi.filter((v) => v.durata >= min && v.durata < f.max);
+        return { f, n: dentro.length, tipico: dentro.length ? mediana(dentro.map((v) => v.views)) : 0 };
+      });
+      const valide = fasce.filter((x) => x.n >= 3);
+      const migliore = valide.length >= 2 ? valide.reduce((a, x) => (x.tipico > a.tipico ? x : a)) : null;
+      return { fasce, migliore, n: maturi.length };
+    }
+
+    // 12. Quale formato di titolo funziona? Parole e coppie di parole più frequenti nei migliori che nei peggiori
+    const PAROLE_TITOLO_VUOTE = new Set([...PAROLE_VUOTE, ...('a an the is are was were be been this that these those it its i me we you he she they them ' +
+      'our his her their at by from but not no so if as do does did can will just all any some more most very too also than then there here ' +
+      'about into over out up down off only own same each other such get got make made new one two now when where which who whom why ' +
+      'shorts short video videos youtube viral fyp foryou trending subscribe like rank ranks ranked ranking rankings ' +
+      'non ma se si mi ti ci vi ne è e\' ho ha hanno sono era questo questa questi queste quello quella tutto tutti tutte ' +
+      'molto poco anche ancora solo sempre mai qui li lì cosi così perché perche quando dove quale quali mio mia tuo tua suo sua').split(' ')]);
+    function tokenTitolo(t) {
+      return (t || '').toLowerCase().replace(/#[\p{L}\p{N}_]+/gu, ' ').replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+    }
+    function terminiTitolo(titolo, escludi) {
+      const tok = tokenTitolo(titolo);
+      const vuota = (w) => PAROLE_TITOLO_VUOTE.has(w) || escludi.has(w);
+      const out = new Set();
+      tok.forEach((w) => { if (w.length >= 3 && !/^\d+$/.test(w) && !vuota(w)) out.add(w); });
+      for (let i = 0; i < tok.length - 1; i++) {
+        const a = tok[i], b = tok[i + 1];
+        // coppie come "tier list", "worst to best", "top 10": almeno una parola deve dire qualcosa
+        if (/^rank/.test(a) || /^rank/.test(b) || escludi.has(a) || escludi.has(b)) continue;
+        if (PAROLE_TITOLO_VUOTE.has(a) && PAROLE_TITOLO_VUOTE.has(b)) continue;
+        if (/^\d+$/.test(a) && /^\d+$/.test(b)) continue;
+        out.add(a + ' ' + b);
+      }
+      return out;
+    }
+    // "tier" + "list" + "tier list" → "tier list";  "from worst" + "worst to" → "from worst to"
+    function unisciFrasi(termini) {
+      let frasi = termini.filter((t) => t.includes(' ')).map((t) => t.split(' '));
+      let cambiato = true;
+      while (cambiato) {
+        cambiato = false;
+        for (const a of frasi) for (const b of frasi) {
+          if (a !== b && a[a.length - 1] === b[0]) { frasi = frasi.filter((x) => x !== a && x !== b).concat([a.concat(b.slice(1))]); cambiato = true; break; }
+        }
+      }
+      const parole = termini.filter((t) => !t.includes(' ') && !frasi.some((f) => f.includes(t)));
+      return [...parole, ...frasi.map((f) => f.join(' '))];
+    }
+    function formatiTitolo(video, ricerca) {
+      if (video.length < 12) return null;
+      const escludi = new Set(tokenTitolo(ricerca));
+      const ord = [...video].sort((a, b) => b.views - a.views);
+      const q = Math.max(3, Math.floor(ord.length / 4));
+      const migliori = ord.slice(0, q), peggiori = ord.slice(-q);
+      const conta = (lista) => {
+        const m = new Map();
+        lista.forEach((v) => terminiTitolo(v.titolo, escludi).forEach((t) => m.set(t, (m.get(t) || 0) + 1)));
+        return m;
+      };
+      const cM = conta(migliori), cP = conta(peggiori);
+      const righe = [...cM.entries()]
+        .filter(([, n]) => n >= Math.max(2, Math.ceil(q * 0.12)))
+        .map(([t, n]) => ({ t, nM: n, nP: cP.get(t) || 0, forza: (n + 0.5) / ((cP.get(t) || 0) + 0.5) }))
+        .filter((r) => r.forza >= 1.5)
+        .sort((a, b) => b.forza - a.forza || b.nM - a.nM);
+      // un esempio vero per ogni parola: il titolo più visto che la contiene
+      righe.forEach((r) => { r.esempio = migliori.find((v) => terminiTitolo(v.titolo, escludi).has(r.t)); });
+      // parole che vengono dallo stesso formato (es. "every", "from worst", "worst to") hanno gli stessi numeri
+      // e lo stesso esempio: ne tengo una sola, unendo le parole
+      const tenute = [];
+      righe.forEach((r) => {
+        const gemella = tenute.find((o) => o.nM === r.nM && o.nP === r.nP && o.esempio === r.esempio);
+        if (gemella) gemella.altre.push(r.t); else tenute.push(Object.assign(r, { altre: [] }));
+      });
+      return { q, righe: tenute.slice(0, 8) };
+    }
+
+    // 13. Coinvolgimento: like e commenti ogni 1.000 visualizzazioni
+    function coinvolgimento(video) {
+      const ok = video.filter((v) => v.views >= 1000 && v.likes != null);
+      if (ok.length < 5) return null;
+      const like = (v) => v.likes / v.views * 1000;
+      const com = (v) => (v.commenti || 0) / v.views * 1000;
+      const ord = [...ok].sort((a, b) => b.views - a.views);
+      const q = Math.max(2, Math.floor(ord.length / 4));
+      return {
+        n: ok.length,
+        like: mediana(ok.map(like)),
+        commenti: mediana(ok.filter((v) => v.commenti != null).map(com)),
+        likeMigliori: mediana(ord.slice(0, q).map(like)),
+        likeAltri: mediana(ord.slice(q).map(like)),
+        discussi: ok.filter((v) => v.commenti != null && v.views >= 5000).sort((a, b) => com(b) - com(a)).slice(0, 5)
+          .map((v) => ({ v, perMille: com(v) })),
+      };
+    }
+
+    // Punteggio finale di "Vale la pena?": la media dei tre voti
+    function verdetto(viral, opp, rep) {
+      const parti = [
+        { nome: 'Viralità', v: viral, debole: 'l\'argomento non sta crescendo molto' },
+        { nome: 'Opportunità', v: opp, debole: 'i canali grandi si prendono molto spazio' },
+        { nome: 'Replicabilità', v: rep, debole: 'i risultati sono poco costanti: conta anche la fortuna' },
+      ];
+      const validi = parti.filter((p) => p.v != null);
+      if (validi.length < 2) {
+        return { cls: 'neutral', finale: null, parti, titolo: 'Non riesco a dirlo',
+          testo: 'Ho trovato troppo pochi Shorts. Prova con una parola più generica o con la ricerca "Profonda".' };
+      }
+      const finale = Math.round(validi.reduce((a, p) => a + p.v, 0) / validi.length);
+      const peggiore = validi.reduce((a, p) => (p.v < a.v ? p : a));
+      if (finale >= 65)
+        return { cls: 'good', finale, parti, titolo: 'Sì, vale la pena',
+          testo: 'L\'argomento è vivo, i canali piccoli si fanno vedere e il successo si ripete.' };
+      if (finale >= 50)
+        return { cls: 'good', finale, parti, peggiore, titolo: 'Sì, con attenzione',
+          testo: 'Nel complesso conviene, ma c\'è un punto debole: ' + peggiore.debole + '.' };
+      if (finale >= 35)
+        return { cls: 'warn', finale, parti, peggiore, titolo: 'Forse',
+          testo: 'Ci sono segnali buoni e segnali deboli. Il più debole: ' + peggiore.debole + '. Ti serve un\'idea che ti distingua.' };
+      return { cls: 'bad', finale, parti, peggiore, titolo: 'Meglio cercare altro',
+        testo: 'I segnali sono deboli: l\'argomento non cresce abbastanza, oppure è difficile entrare o ripetere il successo.' };
     }
 
     function giudizio(v) {
@@ -1583,7 +1886,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
     // Divide il tempo in colonne: 14 giorni, 12 settimane o 12 mesi del calendario
     function colonneTempo(tipo) {
-      const ora = new Date();
+      const ora = new Date(oraAnalisi);
       const out = [];
       if (tipo === 'mesi') {
         for (let i = 11; i >= 0; i--) {
@@ -1621,7 +1924,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       document.querySelectorAll('.seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.periodo === periodo)));
       // uso gli Shorts trovati come "più pertinenti" o "più visti": quelli trovati solo come "più nuovi" gonfierebbero il periodo recente
       const dati = video.filter((v) => v.campione);
-      const ora = Date.now(), confine = ora - P.conf * GIORNO, inizioPrima = confine - P.conf * GIORNO;
+      const ora = oraAnalisi, confine = ora - P.conf * GIORNO, inizioPrima = confine - P.conf * GIORNO;
       const recenti = dati.filter((v) => v.data > confine);
       const prima = dati.filter((v) => v.data > inizioPrima && v.data <= confine);
       const somma = (l) => l.reduce((a, v) => a + v.views, 0);
@@ -1696,7 +1999,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     function graficoTempo(box, punti, opz) {
       box.replaceChildren();
       const W = Math.max(280, box.clientWidth), H = opz.altezza;
-      const m = { t: 14, r: 4, b: 24, l: 48 };
+      const m = { t: opz.valori ? 22 : 14, r: 4, b: 24, l: 48 };
       const iw = W - m.l - m.r, ih = H - m.t - m.b;
       const max = scalaBella(Math.max(...punti.map((p) => Math.max(p.valore, p.linea || 0)), 1));
       const y = (v) => m.t + ih - (v / max) * ih;
@@ -1714,8 +2017,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         const g = el('g', { class: 'bar-g', tabindex: 0 }, svg);
         if (p.valore > 0) {
           const top = y(p.valore), h = m.t + ih - top, r = Math.min(4, h, bw / 2), bx = cx(i) - bw / 2;
-          el('path', { class: 'bar' + (p.c.inCorso ? ' partial' : ''), d: 'M' + bx + ',' + (top + h) + 'V' + (top + r) + 'Q' + bx + ',' + top + ' ' + (bx + r) + ',' + top +
+          el('path', { class: 'bar' + (p.c.inCorso || p.chiaro ? ' partial' : ''), d: 'M' + bx + ',' + (top + h) + 'V' + (top + r) + 'Q' + bx + ',' + top + ' ' + (bx + r) + ',' + top +
             'H' + (bx + bw - r) + 'Q' + (bx + bw) + ',' + top + ' ' + (bx + bw) + ',' + (top + r) + 'V' + (top + h) + 'Z' }, g);
+          if (opz.valori) testo(g, cx(i), top - 6, opz.etichette(p.valore), { 'text-anchor': 'middle', class: 'val' });
         }
         if ((punti.length - 1 - i) % ogni === 0) testo(svg, cx(i), H - 6, p.c.etichetta, { 'text-anchor': 'middle' });
         el('rect', { x: cx(i) - banda / 2, y: m.t, width: banda, height: ih, class: 'hit' }, g);
@@ -1879,13 +2183,183 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         a.href = linkVideo(c.migliore.id); a.target = '_blank'; a.rel = 'noopener';
         const t = document.createElement('span'); t.className = 't'; t.textContent = c.nome;
         const x = document.createElement('span'); x.className = 'x num'; x.textContent = compatto(c.migliore.views);
-        const mesi = Math.max(0, Math.round((Date.now() - c.nato) / (30.4 * GIORNO)));
+        const mesi = Math.max(0, Math.round((oraAnalisi - c.nato) / (30.4 * GIORNO)));
         const info = document.createElement('span'); info.className = 'c';
         info.textContent = (mesi < 1 ? 'aperto meno di un mese fa' : 'aperto ' + mesi + (mesi === 1 ? ' mese fa' : ' mesi fa')) +
           (c.iscritti != null ? ' · ' + compatto(c.iscritti) + ' iscritti' : '') + ' · Short migliore: ' + c.migliore.titolo;
         a.append(t, x, info); li.append(a); ol.append(li);
       });
       box.append(ol);
+    }
+
+    // ---------- 8: funziona sempre o è fortuna? (un pallino per ogni Short dei canali che ne hanno fatti almeno 3) ----------
+    function graficoCostanza(box, video) {
+      box.replaceChildren();
+      const cs = costanzaCanali(video);
+      const riga = document.createElement('p');
+      riga.className = 'big-line';
+      if (!cs.righe.length) {
+        box.append(paragrafo('Nessun canale ha fatto almeno 3 Shorts su questo argomento: non posso dire se il successo si ripete. Prova la ricerca "Profonda".', 'empty-chart'));
+        return;
+      }
+      const b = document.createElement('b'); b.textContent = cs.costanti + ' su ' + cs.righe.length;
+      riga.append('Canali che hanno fatto almeno 3 Shorts: ', b, ' vanno spesso sopra la media della nicchia (' + compatto(cs.soglia) + ').');
+      box.append(riga);
+
+      const righe = cs.righe.slice(0, 10);
+      const tutti = righe.flatMap((r) => r.suoi.map((v) => v.views)).filter((n) => n > 0);
+      const lo = Math.floor(Math.log10(Math.max(1, Math.min(...tutti, cs.soglia))));
+      const hi = Math.max(lo + 1, Math.ceil(Math.log10(Math.max(...tutti, cs.soglia))));
+      const larghezza = Math.max(280, box.clientWidth);
+      const stretto = larghezza < 560;
+      const sinistra = stretto ? 8 : 190, alt = stretto ? 46 : 32;
+      const m = { t: 22, r: 12, b: 24, l: sinistra };
+      const W = larghezza, H = m.t + righe.length * alt + m.b;
+      const iw = W - m.l - m.r;
+      const x = (v) => m.l + ((Math.log10(Math.max(1, v)) - lo) / (hi - lo)) * iw;
+      const svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, height: H, role: 'img', 'aria-label': 'Visualizzazioni degli Shorts di ogni canale' }, box);
+      for (let p = lo; p <= hi; p++) {
+        el('line', { x1: x(Math.pow(10, p)), x2: x(Math.pow(10, p)), y1: m.t, y2: H - m.b, class: 'grid' }, svg);
+        testo(svg, x(Math.pow(10, p)), H - 6, compatto(Math.pow(10, p)), { 'text-anchor': p === lo ? 'start' : p === hi ? 'end' : 'middle' });
+      }
+      el('line', { x1: x(cs.soglia), x2: x(cs.soglia), y1: m.t - 6, y2: H - m.b, class: 'mark-line' }, svg);
+      testo(svg, x(cs.soglia), m.t - 10, 'media della nicchia', { 'text-anchor': x(cs.soglia) > W - 80 ? 'end' : 'middle' });
+      righe.forEach((r, i) => {
+        const yc = m.t + i * alt + (stretto ? 30 : alt / 2);
+        const nome = r.c.nome.length > 24 ? r.c.nome.slice(0, 23) + '…' : r.c.nome;
+        testo(svg, stretto ? m.l : 6, stretto ? yc - 14 : yc + 4, nome + ' · ' + r.sopra + ' su ' + r.suoi.length, { class: 'val' });
+        el('line', { x1: m.l, x2: W - m.r, y1: yc, y2: yc, class: 'grid' }, svg);
+        r.suoi.forEach((v) => {
+          const link = el('a', { href: linkVideo(v.id), target: '_blank', rel: 'noopener' }, svg);
+          const hit = el('circle', { cx: x(v.views), cy: yc, r: 10, class: 'hit', tabindex: 0 }, link);
+          el('circle', { cx: x(v.views), cy: yc, r: 5, class: 'dot' + (v.views >= cs.soglia ? '' : ' old'), stroke: 'var(--surface)', 'stroke-width': 1.5 }, link);
+          const info = (e) => mostraTip(e, compatto(v.views) + ' visualizzazioni', [v.titolo, r.c.nome]);
+          hit.addEventListener('pointermove', info);
+          hit.addEventListener('focus', info);
+          hit.addEventListener('pointerleave', nascondiTip);
+          hit.addEventListener('blur', nascondiTip);
+        });
+      });
+      if (cs.righe.length > righe.length) box.append(paragrafo('Mostro i 10 canali con più Shorts su ' + cs.righe.length + '.', 'muted'));
+    }
+
+    // ---------- 9: si sta saturando? ----------
+    function graficoSaturazione(boxN, boxV, nota, video) {
+      const sat = saturazione(video);
+      graficoTempo(boxN, sat.colonne.map((c) => ({
+        c, valore: c.shorts, righe: [c.nome], titolo: c.shorts + (c.shorts === 1 ? ' Short uscito' : ' Shorts usciti'),
+      })), { altezza: 170, etichette: nf.format });
+      graficoTempo(boxV, sat.colonne.map((c) => ({
+        c, valore: c.tipico,
+        righe: [c.nome, c.nMaturi ? 'valore tipico su ' + c.nMaturi + ' Shorts' : 'nessuno Short da contare'],
+        titolo: c.nMaturi ? compatto(c.tipico) + ' visualizzazioni per Short' : 'Nessun dato',
+      })), { altezza: 170, etichette: compatto });
+      nota.textContent = 'L\'ultima colonna è il mese in corso, quindi la mostro più chiara. Gli Shorts usciti negli ultimi 7 giorni non contano nelle visualizzazioni, perché stanno ancora crescendo.';
+    }
+
+    // ---------- 10: percentuale di "colpi" ----------
+    function mostraColpi(box, video) {
+      box.replaceChildren();
+      const cp = colpi(video);
+      if (cp.base.length < 5) { box.append(paragrafo('Troppo pochi Shorts per calcolarlo.', 'empty-chart')); return; }
+      const griglia = document.createElement('div');
+      griglia.className = 'hits';
+      cp.soglie.forEach((s) => {
+        const perc = s.n / cp.base.length;
+        const d = document.createElement('div'); d.className = 'hit-tile';
+        const l = document.createElement('span'); l.className = 'label'; l.textContent = 'Oltre ' + compatto(s.s);
+        const v = document.createElement('div'); v.className = 'v num'; contaNumero(v, perc * 100, (n) => Math.round(n) + '%');
+        const mt = document.createElement('div'); mt.className = 'meter';
+        const f = document.createElement('span'); f.style.width = Math.max(1, perc * 100) + '%'; mt.append(f);
+        d.append(l, v, mt, paragrafo(s.n + ' Shorts su ' + cp.base.length));
+        griglia.append(d);
+      });
+      const su10 = Math.round((cp.quota100k || 0) * 10);
+      box.append(griglia, paragrafo(su10 >= 1
+        ? 'In pratica, circa ' + su10 + ' Shorts su 10 superano le 100.000 visualizzazioni.'
+        : 'Meno di 1 Short su 10 supera le 100.000 visualizzazioni.', 'big-line'));
+    }
+
+    // ---------- 11: durata migliore ----------
+    function graficoDurata(box, testoBox, video) {
+      const d = durate(video);
+      graficoTempo(box, d.fasce.map((x) => ({
+        c: { etichetta: x.f.nome, inCorso: false }, chiaro: d.migliore && x !== d.migliore, valore: x.tipico,
+        titolo: x.n ? compatto(x.tipico) + ' visualizzazioni' : 'Nessuno Short',
+        righe: [x.f.nome, x.n ? 'valore tipico su ' + x.n + ' Shorts' : ''],
+      })), { altezza: 210, etichette: compatto, valori: true });
+      testoBox.replaceChildren();
+      if (d.migliore) {
+        const b = document.createElement('b'); b.textContent = d.migliore.f.nome.toLowerCase();
+        testoBox.append('Funzionano meglio gli Shorts ', b, ': di solito ' + compatto(d.migliore.tipico) + ' visualizzazioni.');
+      } else testoBox.append('Troppo pochi Shorts per dire quale durata funziona meglio.');
+    }
+
+    // ---------- 12: formati di titolo che funzionano ----------
+    function mostraFormati(box, video) {
+      box.replaceChildren();
+      const ft = formatiTitolo(video, ricercaAttuale);
+      if (!ft || !ft.righe.length) {
+        box.append(paragrafo(ft ? 'Nessuna parola compare molto più spesso nei titoli migliori: qui conta di più il contenuto che il titolo.'
+          : 'Servono almeno 12 Shorts per confrontare i titoli. Prova la ricerca "Profonda".', 'empty-chart'));
+        return;
+      }
+      box.append(paragrafo('Confronto i ' + ft.q + ' Shorts più visti con i ' + ft.q + ' meno visti. Queste parole compaiono molto più spesso nei titoli dei migliori:', 'muted'));
+      const ol = document.createElement('ol');
+      ol.className = 'rank formats';
+      const max = ft.righe[0].forza;
+      ft.righe.forEach((r) => {
+        const li = document.createElement('li');
+        const a = document.createElement('div');
+        const t = document.createElement('span'); t.className = 't'; t.textContent = unisciFrasi([r.t, ...r.altre]).map((x) => '"' + x + '"').join(' … ');
+        const x = document.createElement('span'); x.className = 'x num'; x.textContent = Math.round(r.nM / ft.q * 100) + '%';
+        const tr = document.createElement('span'); tr.className = 'track';
+        const bar = document.createElement('span'); bar.style.width = Math.max(4, r.forza / max * 100) + '%'; tr.append(bar);
+        const c = document.createElement('span'); c.className = 'c';
+        c.textContent = 'Nei titoli di ' + r.nM + ' Shorts migliori su ' + ft.q + ', e solo di ' + r.nP + ' dei peggiori.';
+        a.append(t, x, tr, c);
+        if (r.esempio) {
+          const es = document.createElement('a'); es.className = 'es'; es.href = linkVideo(r.esempio.id); es.target = '_blank'; es.rel = 'noopener';
+          es.textContent = 'Esempio: ' + r.esempio.titolo + ' (' + compatto(r.esempio.views) + ')';
+          a.append(es);
+        }
+        li.append(a); ol.append(li);
+      });
+      box.append(ol);
+    }
+
+    // ---------- 13: coinvolgimento ----------
+    function mostraCoinvolgimento(box, video) {
+      box.replaceChildren();
+      const co = coinvolgimento(video);
+      if (!co) { box.append(paragrafo('Troppo pochi Shorts con like visibili per calcolarlo.', 'empty-chart')); return; }
+      const griglia = document.createElement('div');
+      griglia.className = 'hits';
+      [['Like ogni 1.000 visualizzazioni', co.like], ['Commenti ogni 1.000 visualizzazioni', co.commenti]].forEach(([nome, val]) => {
+        const d = document.createElement('div'); d.className = 'hit-tile';
+        const l = document.createElement('span'); l.className = 'label'; l.textContent = nome;
+        const v = document.createElement('div'); v.className = 'v num'; contaNumero(v, val, (n) => nf1.format(n));
+        d.append(l, v);
+        griglia.append(d);
+      });
+      const confronto = co.likeMigliori >= co.likeAltri * 1.15
+        ? 'Gli Shorts più visti hanno più like (' + nf1.format(co.likeMigliori) + ' ogni 1.000) degli altri (' + nf1.format(co.likeAltri) + '): il pubblico premia chi lo coinvolge.'
+        : 'Gli Shorts più visti non hanno più like degli altri (' + nf1.format(co.likeMigliori) + ' contro ' + nf1.format(co.likeAltri) + ' ogni 1.000): conta soprattutto l\'argomento.';
+      box.append(griglia, paragrafo(confronto, 'muted'));
+      if (co.discussi.length) {
+        box.append(paragrafo('Gli Shorts dove il pubblico commenta di più (buone idee da cui partire):', 'label'));
+        const ol = document.createElement('ol'); ol.className = 'rank';
+        co.discussi.forEach(({ v, perMille }) => {
+          const li = document.createElement('li');
+          const a = document.createElement('a'); a.href = linkVideo(v.id); a.target = '_blank'; a.rel = 'noopener';
+          const t = document.createElement('span'); t.className = 't'; t.textContent = v.titolo;
+          const x = document.createElement('span'); x.className = 'x num'; x.textContent = nf1.format(perMille) + ' ogni 1.000';
+          const c = document.createElement('span'); c.className = 'c';
+          c.textContent = v.canale + ' · ' + nf.format(v.commenti) + ' commenti su ' + compatto(v.views) + ' visualizzazioni';
+          a.append(t, x, c); li.append(a); ol.append(li);
+        });
+        box.append(ol);
+      }
     }
 
     // ---------- Termometro ----------
@@ -1963,8 +2437,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       // se lo stesso video è già stato salvato per la stessa ricerca, tengo i numeri più recenti
       const chiaveRiga = (r) => r.ricerca.toLowerCase() + '|' + r.id;
       const nuoveChiavi = new Set(nuovi.map(chiaveRiga));
-      scrivi(K_ARCHIVIO, archivio().filter((r) => !nuoveChiavi.has(chiaveRiga(r))).concat(nuovi));
+      const ok = scrivi(K_ARCHIVIO, archivio().filter((r) => !nuoveChiavi.has(chiaveRiga(r))).concat(nuovi));
       aggiornaBottoni();
+      if (!ok) messaggio('La memoria del browser è piena: questa ricerca non è entrata nell\'archivio di "Scarica tutte le ricerche". ' +
+        'Scarica l\'archivio e poi premi "Svuota archivio" (le ricerche nel database online non sono toccate).', 'error');
     }
     function aggiornaBottoni() {
       const n = archivio().length;
@@ -2057,7 +2533,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         ' alle ' + ora.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + nf.format(videoAttuali.length) + ' Shorts analizzati';
       const meta = document.createElement('div');
       meta.className = 'snap-meta';
-      [LIVELLI[livello].nome + ' (' + LIVELLI[livello].passaggi.reduce((a, x) => a + x[1], 0) * 50 + ' Shorts al massimo)',
+      const liv = LIVELLI[livelloRicerca] || LIVELLI[livello];
+      [liv.nome + ' (' + liv.passaggi.reduce((a, x) => a + x[1], 0) * 50 + ' Shorts al massimo)',
         soloRank ? 'Solo titoli con rank / ranking' : 'Tutti i titoli',
         'Solo Shorts fino a 3 minuti'].forEach((t) => {
         const c = document.createElement('span'); c.className = 'chip'; c.textContent = t; meta.append(c);
@@ -2111,6 +2588,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       graficoVelocita($('chart-speed'), videoAttuali);
       graficoFasce($('chart-size'), videoAttuali);
       mostraTrend(videoAttuali);
+      graficoCostanza($('consistency'), videoAttuali);
+      graficoSaturazione($('chart-sat-n'), $('chart-sat-v'), $('sat-note'), videoAttuali);
+      graficoDurata($('chart-duration'), $('duration-text'), videoAttuali);
     }
     function mostraRisultati() {
       settimaneAttuali = settimane(videoAttuali);
@@ -2118,12 +2598,26 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       $('results').hidden = false;
       const viral = calcolaSegnali(videoAttuali, settimaneAttuali);
       const opp = calcolaOpportunita(videoAttuali);
+      const rep = calcolaReplicabilita(videoAttuali);
       termometro(viral, '', giudizio);
       termometro(opp, 'opp-', giudizioOpportunita);
-      const vd = verdetto(viral.totale, opp.totale);
-      $('verdict').className = 'verdict magic ' + vd.cls + (vd.cls === 'good' ? ' beam' : '');
+      termometro(rep, 'rep-', giudizioReplicabilita);
+      const vd = verdetto(viral.totale, opp.totale, rep.totale);
+      $('verdict').className = 'verdict magic ' + vd.cls + (vd.finale >= 65 ? ' beam' : '');
+      contaNumero($('final-score'), vd.finale);
       $('verdict-title').textContent = vd.titolo;
       $('verdict-text').textContent = vd.testo;
+      const parti = $('verdict-parts');
+      parti.replaceChildren();
+      vd.parti.forEach((p) => {
+        const c = document.createElement('span');
+        c.className = 'chip' + (vd.peggiore === p ? ' debole' : '');
+        c.textContent = p.nome + ' ' + (p.v == null ? '—' : p.v);
+        parti.append(c);
+      });
+      mostraColpi($('hits'), videoAttuali);
+      mostraFormati($('formats'), videoAttuali);
+      mostraCoinvolgimento($('engagement'), videoAttuali);
       potenziale($('potential'), videoAttuali);
       quote($('share'), videoAttuali);
       nuoviCanali($('newch'), videoAttuali);
@@ -2192,7 +2686,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     $('search-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const termine = $('search-input').value.trim();
-      const frase = '';
       if (!termine) return;
       if (!chiave) {
         $('key-box').open = true;
@@ -2201,18 +2694,19 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       }
       $('search-btn').disabled = true;
       try {
-        const video = await analizza(termine, frase);
+        const momento = Date.now();
+        const video = await analizza(termine, momento);
         if (!video.length) {
-          const regole = [soloRank ? '"rank" o "ranking"' : '', frase ? '"' + frase + '"' : ''].filter(Boolean).join(' e ');
-          messaggio((regole ? 'Non ho trovato Shorts con ' + regole + ' nel titolo per "' : 'Non ho trovato Shorts per "') + termine + '". ' +
-            (frase ? 'Prova a togliere o cambiare la frase obbligatoria.' : 'Prova con altre parole.'), 'info');
+          messaggio('Non ho trovato Shorts con "rank" o "ranking" nel titolo per "' + termine + '". Prova con altre parole.', 'info');
           return;
         }
         videoAttuali = video;
-        ricercaAttuale = frase ? termine + ' + titolo con "' + frase + '"' : termine;
+        ricercaAttuale = termine;
+        oraAnalisi = momento;
+        livelloRicerca = livello;
         ordine = 'views';
-        salvaInArchivio(ricercaAttuale, video);
         messaggio('', '');
+        salvaInArchivio(ricercaAttuale, video);
         dbSalvataId = null;
         mostraRisultati();
         if (dbSessione && $('db-auto').checked) salvaInDb();
@@ -2366,7 +2860,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           m.append(quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
             quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (ri.shorts != null ? ri.shorts + ' Shorts' : ''));
           if (ri.verdetto) { const pl = document.createElement('span'); pl.className = 'pill ' + (ri.cls || 'neutral'); pl.textContent = ri.verdetto; m.append(pl); }
-          if (ri.viral != null || ri.opp != null) m.append('Viralità ' + (ri.viral != null ? ri.viral : '—') + ' · Opportunità ' + (ri.opp != null ? ri.opp : '—'));
+          if (ri.finale != null) m.append('Punteggio ' + ri.finale + '/100 · ');
+          if (ri.viral != null || ri.opp != null) m.append('Viralità ' + (ri.viral != null ? ri.viral : '—') + ' · Opportunità ' + (ri.opp != null ? ri.opp : '—') +
+            (ri.rep != null ? ' · Replicabilità ' + ri.rep : ''));
           info.append(t, m);
           const b = document.createElement('div'); b.className = 'b';
           const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light'; apri.textContent = 'Apri';
@@ -2395,8 +2891,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     function riassuntoAttuale() {
       const viral = calcolaSegnali(videoAttuali, settimane(videoAttuali));
       const opp = calcolaOpportunita(videoAttuali);
-      const vd = verdetto(viral.totale, opp.totale);
-      return { shorts: videoAttuali.length, viral: viral.totale, opp: opp.totale, verdetto: vd.titolo, cls: vd.cls };
+      const rep = calcolaReplicabilita(videoAttuali);
+      const vd = verdetto(viral.totale, opp.totale, rep.totale);
+      return { shorts: videoAttuali.length, viral: viral.totale, opp: opp.totale, rep: rep.totale,
+        finale: vd.finale, verdetto: vd.titolo, cls: vd.cls };
     }
     async function salvaInDb() {
       if (!dbSessione || !videoAttuali.length) return;
@@ -2406,7 +2904,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           method: 'POST', headers: { Prefer: 'return=representation' },
           body: JSON.stringify({
             ricerca: ricercaAttuale,
-            impostazioni: { livello, soloRank },
+            impostazioni: { livello: livelloRicerca || livello, soloRank, momento: oraAnalisi },
             riassunto: riassuntoAttuale(),
             video: videoAttuali,
           }),
@@ -2423,10 +2921,13 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       bottone.disabled = true;
       statoDb('Apro la ricerca salvata…');
       try {
-        const r = await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(id) + '&select=ricerca,creato,video', { method: 'GET' }, true);
+        const r = await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(id) + '&select=ricerca,creato,impostazioni,video', { method: 'GET' }, true);
         if (!r || !r[0]) throw new Error('Non trovo più questa ricerca.');
+        const imp = r[0].impostazioni || {};
         videoAttuali = r[0].video;
         ricercaAttuale = r[0].ricerca;
+        oraAnalisi = imp.momento || new Date(r[0].creato).getTime();
+        livelloRicerca = LIVELLI[imp.livello] ? imp.livello : null;
         ordine = 'views';
         dbSalvataId = id;
         mostraRisultati();

@@ -1,9 +1,9 @@
 name: Scopri argomenti virali
 
 on:
-  schedule:
-    - cron: '17 5 * * *'   # ogni mattina alle 5:17 UTC (6:17 o 7:17 in Italia)
-  workflow_dispatch:        # permette di farlo partire a mano dalla scheda "Actions"
+  # L'avvio automatico di ogni mattina è spento: la sezione del sito che mostrava la classifica è stata tolta.
+  # Per riaccenderlo rimetti qui sotto:   schedule:  e  - cron: '17 5 * * *'
+  workflow_dispatch:        # si può ancora far partire a mano dalla scheda "Actions"
 
 permissions:
   contents: write
