@@ -243,6 +243,14 @@
     .legend i.line { height: 2px; width: 14px; border-radius: 0; background: var(--series-2); }
     @media (max-width: 760px) { .trend-charts { grid-template-columns: 1fr; } }
 
+    /* Barra "Salva la ricerca" */
+    .save-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+    .save-bar p { font-weight: 600; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
+    .save-bar button { display: inline-flex; align-items: center; gap: 8px; }
+    .save-bar svg { width: 18px; height: 18px; }
+    .snap-head { display: grid; gap: 6px; justify-items: start; }
+    .snap-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+
     /* Verdetto finale */
     .verdict {
       background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
@@ -585,6 +593,13 @@
 
     <div id="results" hidden>
       <div style="display:grid; grid-template-columns:minmax(0, 1fr); gap:16px">
+        <div class="save-bar" id="save-bar">
+          <p id="save-title">Risultati</p>
+          <button id="save-html" class="shimmer" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Salva la ricerca (HTML)
+          </button>
+        </div>
         <section class="verdict" id="verdict">
           <span class="label">Vale la pena?</span>
           <h2 id="verdict-title">—</h2>
@@ -1988,6 +2003,79 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     }
+    // ---------- Salva la ricerca come pagina HTML ----------
+    function salvaHtml() {
+      const ora = new Date();
+      const copia = $('results').firstElementChild.cloneNode(true);
+      copia.querySelector('#save-bar').remove();
+      copia.querySelectorAll('.actions, .table-head + p').forEach((n) => n.remove());
+
+      // il trend lo salvo per tutti e tre i periodi: giorni, settimane e mesi
+      const trendOriginale = copia.querySelector('#trend');
+      const periodoPrima = periodo;
+      const nomiPeriodo = { giorni: 'ultimi giorni', settimane: 'ultime settimane', mesi: 'ultimi mesi' };
+      Object.keys(PERIODI).forEach((p) => {
+        periodo = p;
+        mostraTrend(videoAttuali);
+        const t = $('trend').cloneNode(true);
+        t.removeAttribute('id');
+        t.querySelector('.seg').remove();
+        t.querySelector('.card-head h2').textContent = 'Il trend sta esplodendo o è passato? · ' + nomiPeriodo[p];
+        trendOriginale.before(t);
+      });
+      trendOriginale.remove();
+      periodo = periodoPrima;
+      mostraTrend(videoAttuali);
+
+      // pulizia: numeri finali, niente animazioni a metà, niente id doppi
+      copia.querySelectorAll('[data-finale]').forEach((n) => { n.textContent = n.dataset.finale; });
+      copia.querySelectorAll('.appear').forEach((n) => n.classList.remove('appear'));
+      copia.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id'));
+      copia.querySelectorAll('[tabindex]').forEach((n) => n.removeAttribute('tabindex'));
+
+      // intestazione con la ricerca e le impostazioni usate
+      const testa = document.createElement('header');
+      testa.className = 'snap-head';
+      const occhiello = document.createElement('span');
+      occhiello.className = 'eyebrow';
+      occhiello.textContent = 'Radar Nicchie · ricerca salvata';
+      const h1 = document.createElement('h1');
+      h1.className = 'grad-text';
+      h1.textContent = ricercaAttuale;
+      const sotto = document.createElement('p');
+      sotto.className = 'sub';
+      sotto.textContent = 'Salvata il ' + ora.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) +
+        ' alle ' + ora.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + nf.format(videoAttuali.length) + ' Shorts analizzati';
+      const meta = document.createElement('div');
+      meta.className = 'snap-meta';
+      [LIVELLI[livello].nome + ' (' + LIVELLI[livello].passaggi.reduce((a, x) => a + x[1], 0) * 50 + ' Shorts al massimo)',
+        soloRank ? 'Solo titoli con rank / ranking' : 'Tutti i titoli',
+        'Solo Shorts fino a 3 minuti'].forEach((t) => {
+        const c = document.createElement('span'); c.className = 'chip'; c.textContent = t; meta.append(c);
+      });
+      testa.append(occhiello, h1, sotto, meta);
+
+      const stile = document.querySelector('style').textContent;
+      const titolo = 'Radar Nicchie · ' + ricercaAttuale;
+      const pagina = '<!doctype html>\n<html lang="it">\n<head>\n<meta charset="utf-8">\n' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+        '<title>' + titolo.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) + '</title>\n' +
+        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">\n' +
+        '<style>' + stile + '</style>\n</head>\n<body>\n<div class="wrap">\n' +
+        testa.outerHTML + '\n' + copia.outerHTML + '\n' +
+        '<p class="muted" style="font-size:.8rem">Copia salvata da Radar Nicchie. I numeri sono quelli del momento del salvataggio.</p>\n' +
+        '</div>\n</body>\n</html>\n';
+
+      const blob = new Blob([pagina], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'radar-' + nomeSicuro(ricercaAttuale) + '-' + ora.toISOString().slice(0, 10) + '.html';
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+
     function nomeSicuro(s) {
       return (s || 'ricerca').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ricerca';
     }
@@ -2019,6 +2107,7 @@
       disegnaGrafici();
       classifica($('rank'), videoAttuali);
       $('table-title').textContent = videoAttuali.length + ' Shorts trovati per "' + ricercaAttuale + '"';
+      $('save-title').textContent = 'Risultati per "' + ricercaAttuale + '"';
       tabella();
       faiComparire(document.querySelectorAll('#results .verdict, #results .thermo, #results #trend, #results .charts > .card, #results > div > .card:last-child'));
     }
@@ -2028,7 +2117,8 @@
     // Number Ticker: il numero "conta" da 0 fino al valore
     function contaNumero(nodo, valore, formato) {
       const fmt = formato || ((n) => nf.format(Math.round(n)));
-      if (valore == null || !isFinite(valore)) { nodo.textContent = '—'; return; }
+      if (valore == null || !isFinite(valore)) { nodo.textContent = '—'; nodo.dataset.finale = '—'; return; }
+      nodo.dataset.finale = fmt(valore);
       if (pocoMovimento.matches) { nodo.textContent = fmt(valore); return; }
       const durata = 900, t0 = performance.now();
       nodo.dataset.conta = String(t0);
@@ -2156,6 +2246,8 @@
         $('disc-btn').disabled = false;
       }
     });
+
+    $('save-html').addEventListener('click', salvaHtml);
 
     $('dl-current').addEventListener('click', () => {
       const oggi = new Date().toISOString();
