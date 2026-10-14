@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · Radar Nicchie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+  <style>
+    :root {
+      --bg: #f7f6fc; --surface: #ffffff; --ink: #17142b; --ink-2: #4b4766; --muted: #77738f; --line: #e7e4f3;
+      --g1: #7c3aed; --g2: #ec4899;
+      --font: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0d0b17; --surface: #16131f; --ink: #f3f1fb; --ink-2: #c2bdd8; --muted: #8f89a8; --line: #2a2540;
+        --g1: #a78bfa; --g2: #f472b6; color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0d0b17; --surface: #16131f; --ink: #f3f1fb; --ink-2: #c2bdd8; --muted: #8f89a8; --line: #2a2540;
+      --g1: #a78bfa; --g2: #f472b6; color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.6; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; display: grid; gap: 20px; }
+    h1 {
+      margin: 0; font-size: 2rem; letter-spacing: -0.03em; text-wrap: balance;
+      background: linear-gradient(90deg, var(--g1), var(--g2)); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    h2 { margin: 0 0 6px; font-size: 1.15rem; text-wrap: balance; }
+    p, ul { margin: 0; color: var(--ink-2); }
+    ul { padding-left: 20px; display: grid; gap: 6px; }
+    section { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; display: grid; gap: 8px; }
+    a { color: var(--g1); }
+    .muted { color: var(--muted); font-size: .9rem; }
+    b { color: var(--ink); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div>
+      <p class="muted"><a href="./">← Torna a Radar Nicchie</a></p>
+      <h1>Privacy di Radar Nicchie</h1>
+      <p class="muted">Ultimo aggiornamento: 14 ottobre 2026</p>
+    </div>
+
+    <section>
+      <h2>Cos'è Radar Nicchie</h2>
+      <p>Radar Nicchie è uno strumento gratuito per chi crea contenuti: cerca gli Shorts di YouTube con "rank" o "ranking" nel titolo
+        su un argomento e mostra grafici e punteggi per capire se quell'argomento vale la pena di essere fatto.
+        Il sito non è collegato a YouTube né a Google.</p>
+    </section>
+
+    <section>
+      <h2>Servizi API di YouTube</h2>
+      <p>Radar Nicchie usa i <b>servizi API di YouTube</b> per leggere dati pubblici: titoli degli Shorts, data di pubblicazione, durata,
+        visualizzazioni, like, commenti, nome dei canali, numero di iscritti e data di apertura dei canali.</p>
+      <ul>
+        <li>Usando Radar Nicchie accetti i <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">Termini di servizio di YouTube</a>.</li>
+        <li>I dati che arrivano da YouTube sono trattati anche secondo le
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Norme sulla privacy di Google</a>.</li>
+        <li>Il sito non accede al tuo account YouTube o Google e non chiede nessun permesso su di esso.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Quali dati salva e dove</h2>
+      <p><b>Nel tuo browser</b> (solo sul dispositivo che usi):</p>
+      <ul>
+        <li>la tua chiave personale delle API di YouTube, se la inserisci;</li>
+        <li>le tue scelte (Veloce/Normale/Profonda, periodo del trend) e il contatore dei crediti di oggi;</li>
+        <li>l'archivio degli Shorts trovati nelle tue ricerche, usato per il file "Scarica tutte le ricerche".</li>
+      </ul>
+      <p><b>Nel database online</b> (Supabase), solo se crei un account:</p>
+      <ul>
+        <li>la tua email e la password (gestite da Supabase in modo protetto: la password non è leggibile);</li>
+        <li>le ricerche che salvi: nome della ricerca, data, punteggi calcolati dal sito e l'elenco degli Shorts trovati.</li>
+      </ul>
+      <p>Ogni persona vede, salva e cancella solo le proprie ricerche.</p>
+    </section>
+
+    <section>
+      <h2>Per quanto tempo</h2>
+      <ul>
+        <li>I dati presi da YouTube (titoli, visualizzazioni, canali…) vengono <b>cancellati dopo 30 giorni</b>,
+          sia nel browser sia nel database online. Della ricerca resta solo il riassunto: nome, data e punteggi calcolati dal sito.</li>
+        <li>Per avere dati aggiornati basta rifare la ricerca.</li>
+        <li>I file che scarichi (Excel, CSV, pagina HTML) restano sul tuo dispositivo e li gestisci tu.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Con chi vengono condivisi</h2>
+      <p>Con nessuno. Il sito non vende dati, non mostra pubblicità e non usa strumenti di tracciamento.
+        I dati passano solo tra il tuo browser, YouTube (per le ricerche) e Supabase (se usi il database online).</p>
+    </section>
+
+    <section>
+      <h2>Come cancellare i tuoi dati</h2>
+      <ul>
+        <li><b>Chiave YouTube:</b> sul sito premi "Cancella la chiave salvata".</li>
+        <li><b>Archivio nel browser:</b> premi "Svuota archivio", oppure cancella i dati del sito dalle impostazioni del browser.</li>
+        <li><b>Ricerche nel database:</b> premi "Elimina" accanto a ogni ricerca.</li>
+        <li><b>Account del database:</b> scrivi tramite la pagina del progetto su
+          <a href="https://github.com/Kebbenn" target="_blank" rel="noopener">GitHub</a> e verrà cancellato insieme a tutte le sue ricerche.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Contatti</h2>
+      <p>Per domande sulla privacy puoi scrivere tramite la pagina del progetto su
+        <a href="https://github.com/Kebbenn" target="_blank" rel="noopener">GitHub</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

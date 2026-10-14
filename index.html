@@ -300,6 +300,11 @@
     .rank.formats .es { grid-column: 1 / -1; font-size: .8rem; color: var(--g1); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .rank.formats .es:hover { text-decoration: underline; }
 
+    /* Piè di pagina */
+    .foot { display: grid; gap: 6px; padding: 8px 4px 0; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
+    .foot a { color: var(--ink-2); }
+    .foot b { font-weight: 600; color: var(--ink-2); }
+
     /* Verdetto finale */
     .verdict {
       background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
@@ -599,7 +604,8 @@
       <div class="card-head">
         <span class="label">Database online · gratis</span>
         <h2>Le tue ricerche, da qualsiasi computer</h2>
-        <p id="db-sub">Salva le ricerche su internet e ritrovale da ogni PC o telefono, senza spendere crediti per rivederle.</p>
+        <p id="db-sub">Salva le ricerche su internet e ritrovale da ogni PC o telefono, senza spendere crediti per rivederle.
+          Come chiedono le regole di YouTube, dopo 30 giorni l'elenco degli Shorts di ogni ricerca viene cancellato e resta solo il riassunto.</p>
       </div>
 
       <!-- 1. da collegare -->
@@ -950,6 +956,16 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         </section>
       </div>
     </div>
+
+    <footer class="foot">
+      <p>Radar Nicchie usa i <b>servizi API di YouTube</b>. Usando questo sito accetti i
+        <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener">Termini di servizio di YouTube</a>.
+        I dati sono trattati come descritto nelle
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Norme sulla privacy di Google</a>
+        e nella <a href="privacy.html">Privacy di Radar Nicchie</a>.</p>
+      <p>I dati di YouTube salvati (nel browser e nel database online) vengono cancellati dopo 30 giorni: resta solo il riassunto della ricerca.
+        Radar Nicchie non è collegato a YouTube né a Google.</p>
+    </footer>
   </div>
 
   <div class="tip" id="tip" hidden></div>
@@ -2563,7 +2579,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">\n' +
         '<style>' + stile + '</style>\n</head>\n<body>\n<div class="wrap">\n' +
         testa.outerHTML + '\n' + copia.outerHTML + '\n' +
-        '<p class="muted" style="font-size:.8rem">Copia salvata da Radar Nicchie. I numeri sono quelli del momento del salvataggio.</p>\n' +
+        '<p class="muted" style="font-size:.8rem">Copia salvata da Radar Nicchie. I numeri sono quelli del momento del salvataggio. ' +
+        'Dati presi tramite i servizi API di YouTube: <a href="https://www.youtube.com/t/terms">Termini di servizio di YouTube</a> · ' +
+        '<a href="https://policies.google.com/privacy">Norme sulla privacy di Google</a>.</p>\n' +
         '</div>\n' + scriptExcel + '</body>\n</html>\n';
 
       const blob = new Blob([pagina], { type: 'text/html;charset=utf-8' });
@@ -2578,6 +2596,19 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
     function nomeSicuro(s) {
       return (s || 'ricerca').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'ricerca';
+    }
+
+    // ---------- Regola dei 30 giorni (regole di YouTube per chi usa le sue API) ----------
+    // I dati presi da YouTube (titoli, visualizzazioni, canali...) non si possono tenere più di 30 giorni senza aggiornarli:
+    // dopo 30 giorni li cancello e tengo solo il riassunto calcolato dal sito (nome della ricerca, data, punteggi).
+    const GIORNI_CONSERVAZIONE = 30;
+    function pulisciMemoriaLocale() {
+      const limite = Date.now() - GIORNI_CONSERVAZIONE * GIORNO;
+      const a = archivio();
+      const tenuti = a.filter((r) => r.analizzato && new Date(r.analizzato).getTime() >= limite);
+      if (tenuti.length !== a.length) scrivi(K_ARCHIVIO, tenuti);
+      // memorie di funzioni che il sito non ha più
+      ['radar-ultima-scoperta', 'radar-storico-scoperte', 'radar-frase-titolo', 'radar-solo-rank'].forEach(cancella);
     }
 
     // ---------- Disegno di tutto ----------
@@ -2842,7 +2873,24 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       }
     }
 
+    let dbPulito = false;
+    async function pulisciDb() {
+      if (dbPulito || !dbSessione) return;
+      const limite = new Date(Date.now() - GIORNI_CONSERVAZIONE * GIORNO).toISOString();
+      const vecchie = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&creato=lt.' + encodeURIComponent(limite) +
+        '&order=creato.asc&limit=500', { method: 'GET' }, true);
+      for (const r of vecchie.filter((x) => !(x.impostazioni && x.impostazioni.scaduta))) {
+        // le regole del database permettono di salvare e cancellare: cancello la ricerca e la salvo di nuovo senza gli Shorts
+        await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(r.id), { method: 'DELETE' }, true);
+        await chiamaDb('/rest/v1/ricerche', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({
+          creato: r.creato, ricerca: r.ricerca, riassunto: r.riassunto, video: [],
+          impostazioni: Object.assign({}, r.impostazioni || {}, { scaduta: true }),
+        }) }, true);
+      }
+      dbPulito = true;
+    }
     async function caricaStorico() {
+      try { await pulisciDb(); } catch (e) { /* riprovo la prossima volta */ }
       const ul = $('db-list');
       try {
         const righe = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&order=creato.desc&limit=' + (dbTutte ? 1000 : 21), { method: 'GET' }, true);
@@ -2860,13 +2908,27 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           m.append(quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
             quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (ri.shorts != null ? ri.shorts + ' Shorts' : ''));
           if (ri.verdetto) { const pl = document.createElement('span'); pl.className = 'pill ' + (ri.cls || 'neutral'); pl.textContent = ri.verdetto; m.append(pl); }
-          if (ri.finale != null) m.append('Punteggio ' + ri.finale + '/100 · ');
-          if (ri.viral != null || ri.opp != null) m.append('Viralità ' + (ri.viral != null ? ri.viral : '—') + ' · Opportunità ' + (ri.opp != null ? ri.opp : '—') +
-            (ri.rep != null ? ' · Replicabilità ' + ri.rep : ''));
+          const voti = [ri.finale != null ? 'Punteggio ' + ri.finale + '/100' : '',
+            ri.viral != null ? 'Viralità ' + ri.viral : '', ri.opp != null ? 'Opportunità ' + ri.opp : '', ri.rep != null ? 'Replicabilità ' + ri.rep : ''].filter(Boolean);
+          if (voti.length) m.append(voti.join(' · '));
           info.append(t, m);
           const b = document.createElement('div'); b.className = 'b';
-          const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light'; apri.textContent = 'Apri';
-          apri.addEventListener('click', () => apriDaDb(r.id, apri));
+          const scaduta = !!(r.impostazioni && r.impostazioni.scaduta);
+          const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light';
+          if (scaduta) {
+            const ch = document.createElement('span'); ch.className = 'chip'; ch.textContent = 'Dettagli cancellati dopo 30 giorni'; m.append(ch);
+            apri.textContent = 'Rifai';
+            apri.title = 'Rifai la ricerca con dati aggiornati (usa crediti)';
+            apri.addEventListener('click', () => {
+              $('search-input').value = r.ricerca;
+              $('search-form').scrollIntoView({ behavior: pocoMovimento.matches ? 'auto' : 'smooth', block: 'start' });
+              $('search-input').focus();
+              statoDb('Ho scritto "' + r.ricerca + '" nella ricerca: premi Analizza per rifarla con dati aggiornati.', 'info');
+            });
+          } else {
+            apri.textContent = 'Apri';
+            apri.addEventListener('click', () => apriDaDb(r.id, apri));
+          }
           const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-light'; del.textContent = 'Elimina';
           let conferma = false;
           del.addEventListener('click', async () => {
@@ -2923,6 +2985,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       try {
         const r = await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(id) + '&select=ricerca,creato,impostazioni,video', { method: 'GET' }, true);
         if (!r || !r[0]) throw new Error('Non trovo più questa ricerca.');
+        if (!Array.isArray(r[0].video) || !r[0].video.length)
+          throw new Error('I dettagli di questa ricerca sono stati cancellati dopo 30 giorni, come chiedono le regole di YouTube. Rifalla per avere dati aggiornati.');
         const imp = r[0].impostazioni || {};
         videoAttuali = r[0].video;
         ricercaAttuale = r[0].ricerca;
@@ -3012,6 +3076,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     });
 
     // ---------- Avvio ----------
+    pulisciMemoriaLocale();
     rendiMagici();
     mostraDb();
     mostraChiave();
