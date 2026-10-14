@@ -251,6 +251,31 @@
     .snap-head { display: grid; gap: 6px; justify-items: start; }
     .snap-meta { display: flex; flex-wrap: wrap; gap: 6px; }
 
+    /* Database online */
+    .db { display: grid; gap: 14px; }
+    .db-step { display: grid; gap: 12px; }
+    .db-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .db-help summary { cursor: pointer; font-weight: 600; color: var(--g1); }
+    .db-help ol { margin: 10px 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); font-size: .9rem; }
+    .sql-box { position: relative; }
+    .sql-box button { position: absolute; top: 8px; right: 8px; padding: 6px 10px; font-size: .8rem; }
+    .sql-box pre {
+      margin: 0; padding: 14px; padding-top: 44px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line);
+      font-family: var(--mono); font-size: .75rem; line-height: 1.5; overflow-x: auto; max-height: 260px; color: var(--ink-2);
+    }
+    .db-top { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+    .db-list { list-style: none; margin: 0; padding: 0; display: grid; }
+    .db-list li {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+      padding: 10px 0; border-top: 1px solid var(--line);
+    }
+    .db-list li:first-child { border-top: 0; }
+    .db-list .t { font-weight: 600; overflow-wrap: anywhere; }
+    .db-list .m { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
+    .db-list .b { display: flex; gap: 6px; }
+    .db-list .b button { padding: 7px 12px; font-size: .82rem; }
+    @media (max-width: 560px) { .db-list li { grid-template-columns: 1fr; } }
+
     /* Verdetto finale */
     .verdict {
       background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
@@ -582,6 +607,93 @@
       </div>
     </section>
 
+    <section class="card db" id="db">
+      <div class="card-head">
+        <span class="label">Database online · gratis</span>
+        <h2>Le tue ricerche, da qualsiasi computer</h2>
+        <p id="db-sub">Salva le ricerche su internet e ritrovale da ogni PC o telefono, senza spendere crediti per rivederle.</p>
+      </div>
+
+      <!-- 1. da collegare -->
+      <div id="db-setup" class="db-step" hidden>
+        <details class="db-help">
+          <summary>Come si attiva (5 minuti, una volta sola)</summary>
+          <ol>
+            <li>Vai su <b>supabase.com</b>, premi <b>Start your project</b> e crea un account gratuito.</li>
+            <li>Premi <b>New project</b>, dagli un nome (es. radar), scegli una password e la zona <b>Europe</b>.</li>
+            <li>A sinistra apri <b>SQL Editor</b>, premi <b>New query</b>, incolla il codice qui sotto e premi <b>Run</b>.</li>
+            <li>A sinistra apri <b>Project Settings</b>, poi <b>API</b>: copia <b>Project URL</b> e la chiave <b>anon public</b> qui sotto.</li>
+            <li>Facoltativo: in <b>Authentication</b>, <b>Sign In / Providers</b>, <b>Email</b>, togli <b>Confirm email</b> per entrare subito senza conferma.</li>
+          </ol>
+          <div class="sql-box">
+            <button class="btn-light" id="db-copy-sql" type="button">Copia il codice</button>
+            <pre id="db-sql">-- Database online di Radar Nicchie (Supabase, piano gratuito).
+-- Copia tutto questo testo in Supabase &gt; SQL Editor &gt; New query, poi premi &quot;Run&quot;.
+-- Crea la tabella delle ricerche: ogni persona vede, salva e cancella solo le proprie.
+
+create table if not exists public.ricerche (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users on delete cascade,
+  creato timestamptz not null default now(),
+  ricerca text not null,
+  impostazioni jsonb,
+  riassunto jsonb,
+  video jsonb not null
+);
+
+alter table public.ricerche enable row level security;
+
+drop policy if exists &quot;vedo le mie ricerche&quot; on public.ricerche;
+drop policy if exists &quot;salvo le mie ricerche&quot; on public.ricerche;
+drop policy if exists &quot;cancello le mie ricerche&quot; on public.ricerche;
+
+create policy &quot;vedo le mie ricerche&quot; on public.ricerche
+  for select using (auth.uid() = user_id);
+create policy &quot;salvo le mie ricerche&quot; on public.ricerche
+  for insert with check (auth.uid() = user_id);
+create policy &quot;cancello le mie ricerche&quot; on public.ricerche
+  for delete using (auth.uid() = user_id);
+
+create index if not exists ricerche_utente_data on public.ricerche (user_id, creato desc);
+</pre>
+          </div>
+        </details>
+        <form id="db-config" class="db-form">
+          <label class="field grow"><span class="label">Project URL</span>
+            <input id="db-url" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off"></label>
+          <label class="field grow"><span class="label">Chiave anon public</span>
+            <input id="db-key" type="password" placeholder="eyJhbGciOi…" autocomplete="off"></label>
+          <button type="submit">Collega</button>
+        </form>
+      </div>
+
+      <!-- 2. accesso -->
+      <div id="db-login" class="db-step" hidden>
+        <form id="db-login-form" class="db-form">
+          <label class="field grow"><span class="label">Email</span>
+            <input id="db-email" type="email" autocomplete="email" required></label>
+          <label class="field grow"><span class="label">Password</span>
+            <input id="db-pass" type="password" autocomplete="current-password" minlength="6" required></label>
+          <button type="submit" id="db-enter">Entra</button>
+          <button type="button" class="btn-light" id="db-signup">Crea account</button>
+        </form>
+        <button class="btn-link" id="db-unlink" type="button">Cambia database</button>
+      </div>
+
+      <!-- 3. connesso -->
+      <div id="db-on" class="db-step" hidden>
+        <div class="db-top">
+          <span class="pill good" id="db-who">Connesso</span>
+          <label class="check"><input type="checkbox" id="db-auto" checked> Salva automaticamente ogni ricerca</label>
+          <button class="btn-link" id="db-logout" type="button">Esci</button>
+        </div>
+        <ul class="db-list" id="db-list"></ul>
+        <button class="btn-light" id="db-more" type="button" hidden>Mostra tutte</button>
+      </div>
+
+      <p class="msg info" id="db-status" hidden></p>
+    </section>
+
     <div id="msg" hidden></div>
 
     <section class="intro" id="intro">
@@ -599,6 +711,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
             Salva la ricerca (HTML)
           </button>
+          <button id="db-save" class="btn-light" type="button" hidden>Salva nel database online</button>
         </div>
         <section class="verdict" id="verdict">
           <span class="label">Vale la pena?</span>
@@ -2367,7 +2480,10 @@
         ordine = 'views';
         salvaInArchivio(ricercaAttuale, video);
         messaggio('', '');
+        dbSalvataId = null;
         mostraRisultati();
+        if (dbSessione && $('db-auto').checked) salvaInDb();
+        else $('db-save').hidden = !dbSessione;
       } catch (err) {
         messaggio(err.message, 'error');
       } finally {
@@ -2453,8 +2569,239 @@
     window.addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(disegnaGrafici, 150); });
     window.addEventListener('scroll', nascondiTip, { passive: true });
 
+    // ---------- Database online (Supabase) ----------
+    // Parlo con Supabase direttamente, senza librerie: accesso con email e password, poi lettura e scrittura
+    // della tabella "ricerche". Ognuno vede solo le proprie ricerche (regole nel file database/supabase.sql).
+    const K_DB_CONF = 'radar-db-config';
+    const K_DB_SESSIONE = 'radar-db-sessione';
+    const K_DB_AUTO = 'radar-db-auto';
+    let dbConf = leggi(K_DB_CONF, null);
+    let dbSessione = leggi(K_DB_SESSIONE, null);
+    let dbTutte = false;
+    let dbSalvataId = null;   // la ricerca mostrata è già nel database?
+
+    function statoDb(testo, tipo) {
+      const p = $('db-status');
+      p.hidden = !testo;
+      p.textContent = testo || '';
+      p.className = 'msg ' + (tipo || 'info');
+    }
+    function erroreDb(dati, stato) {
+      const t = (dati && (dati.error_description || dati.msg || dati.message || dati.error)) || '';
+      if (/invalid login credentials/i.test(t)) return 'Email o password sbagliate.';
+      if (/email not confirmed/i.test(t)) return 'Devi prima confermare l\'email: apri il messaggio che ti ha mandato Supabase e premi il link.';
+      if (/already registered|already exists/i.test(t)) return 'Esiste già un account con questa email: premi "Entra".';
+      if (/password should be at least/i.test(t)) return 'La password deve avere almeno 6 caratteri.';
+      if (/relation .* does not exist|could not find the table/i.test(t)) return 'Manca la tabella: in Supabase apri SQL Editor, incolla il codice e premi Run.';
+      if (/invalid api key|no api key/i.test(t)) return 'La chiave "anon public" non è giusta. Premi "Cambia database" e ricopiala.';
+      if (stato === 0) return 'Non riesco a collegarmi al database. Controlla internet e il Project URL. Se il progetto è in pausa, riattivalo da supabase.com.';
+      return 'Il database ha risposto con un errore (' + stato + ')' + (t ? ': ' + t : '.');
+    }
+    async function chiamaDb(percorso, opz, conToken) {
+      if (conToken) await tokenValido();
+      const headers = Object.assign({ apikey: dbConf.chiave, 'Content-Type': 'application/json' }, opz.headers || {});
+      if (conToken && dbSessione) headers.Authorization = 'Bearer ' + dbSessione.access_token;
+      let r;
+      try {
+        r = await fetch(dbConf.url.replace(/\/+$/, '') + percorso, Object.assign({}, opz, { headers }));
+      } catch (e) { throw new Error(erroreDb(null, 0)); }
+      const testo = await r.text();
+      let dati = null;
+      try { dati = testo ? JSON.parse(testo) : null; } catch (e) { dati = { message: testo }; }
+      if (r.status === 401 && conToken && !opz._riprova && dbSessione) {
+        await rinnovaToken(true);
+        return chiamaDb(percorso, Object.assign({}, opz, { _riprova: true }), conToken);
+      }
+      if (!r.ok) throw new Error(erroreDb(dati, r.status));
+      return dati;
+    }
+    function tieniSessione(d) {
+      dbSessione = { access_token: d.access_token, refresh_token: d.refresh_token,
+        scade: Date.now() + (d.expires_in || 3600) * 1000, email: (d.user && d.user.email) || (dbSessione && dbSessione.email) };
+      scrivi(K_DB_SESSIONE, dbSessione);
+    }
+    async function rinnovaToken(forza) {
+      if (!dbSessione) return;
+      if (!forza && dbSessione.scade - Date.now() > 60000) return;
+      try {
+        tieniSessione(await chiamaDb('/auth/v1/token?grant_type=refresh_token',
+          { method: 'POST', body: JSON.stringify({ refresh_token: dbSessione.refresh_token }) }, false));
+      } catch (e) {
+        dbSessione = null; cancella(K_DB_SESSIONE); mostraDb();
+        throw new Error('L\'accesso è scaduto: rientra con email e password.');
+      }
+    }
+    const tokenValido = () => rinnovaToken(false);
+
+    function mostraDb() {
+      const collegato = !!(dbConf && dbConf.url && dbConf.chiave);
+      $('db-setup').hidden = collegato;
+      $('db-login').hidden = !collegato || !!dbSessione;
+      $('db-on').hidden = !collegato || !dbSessione;
+      $('db-save').hidden = !dbSessione || $('db-auto').checked;
+      if (dbSessione) {
+        $('db-who').textContent = 'Connesso: ' + (dbSessione.email || 'account');
+        caricaStorico();
+      }
+    }
+
+    async function caricaStorico() {
+      const ul = $('db-list');
+      try {
+        const righe = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&order=creato.desc&limit=' + (dbTutte ? 1000 : 21), { method: 'GET' }, true);
+        ul.replaceChildren();
+        if (!righe.length) {
+          ul.append(paragrafo('Ancora nessuna ricerca salvata. Fai una ricerca con "Analizza": la salvo qui da sola.', 'muted'));
+        }
+        righe.slice(0, dbTutte ? righe.length : 20).forEach((r) => {
+          const li = document.createElement('li');
+          const info = document.createElement('div');
+          const t = document.createElement('div'); t.className = 't'; t.textContent = r.ricerca;
+          const m = document.createElement('div'); m.className = 'm';
+          const quando = new Date(r.creato);
+          const ri = r.riassunto || {};
+          m.append(quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
+            quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (ri.shorts != null ? ri.shorts + ' Shorts' : ''));
+          if (ri.verdetto) { const pl = document.createElement('span'); pl.className = 'pill ' + (ri.cls || 'neutral'); pl.textContent = ri.verdetto; m.append(pl); }
+          if (ri.viral != null || ri.opp != null) m.append('Viralità ' + (ri.viral != null ? ri.viral : '—') + ' · Opportunità ' + (ri.opp != null ? ri.opp : '—'));
+          info.append(t, m);
+          const b = document.createElement('div'); b.className = 'b';
+          const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light'; apri.textContent = 'Apri';
+          apri.addEventListener('click', () => apriDaDb(r.id, apri));
+          const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-light'; del.textContent = 'Elimina';
+          let conferma = false;
+          del.addEventListener('click', async () => {
+            if (!conferma) { conferma = true; del.textContent = 'Sicuro?'; setTimeout(() => { conferma = false; del.textContent = 'Elimina'; }, 4000); return; }
+            try {
+              await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(r.id), { method: 'DELETE' }, true);
+              if (dbSalvataId === r.id) dbSalvataId = null;
+              caricaStorico();
+            } catch (e) { statoDb(e.message, 'error'); }
+          });
+          b.append(apri, del);
+          li.append(info, b);
+          ul.append(li);
+        });
+        $('db-more').hidden = dbTutte || righe.length <= 20;
+      } catch (e) {
+        ul.replaceChildren();
+        statoDb(e.message, 'error');
+      }
+    }
+
+    function riassuntoAttuale() {
+      const viral = calcolaSegnali(videoAttuali, settimane(videoAttuali));
+      const opp = calcolaOpportunita(videoAttuali);
+      const vd = verdetto(viral.totale, opp.totale);
+      return { shorts: videoAttuali.length, viral: viral.totale, opp: opp.totale, verdetto: vd.titolo, cls: vd.cls };
+    }
+    async function salvaInDb() {
+      if (!dbSessione || !videoAttuali.length) return;
+      statoDb('Salvo la ricerca nel database…');
+      try {
+        const r = await chiamaDb('/rest/v1/ricerche', {
+          method: 'POST', headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({
+            ricerca: ricercaAttuale,
+            impostazioni: { livello, soloRank, frase: $('must-input').value.trim() || null },
+            riassunto: riassuntoAttuale(),
+            video: videoAttuali,
+          }),
+        }, true);
+        dbSalvataId = r && r[0] ? r[0].id : 'ok';
+        statoDb('Ricerca salvata nel database online ✓', 'info');
+        $('db-save').hidden = true;
+        caricaStorico();
+      } catch (e) {
+        statoDb('Non sono riuscito a salvare la ricerca: ' + e.message, 'error');
+      }
+    }
+    async function apriDaDb(id, bottone) {
+      bottone.disabled = true;
+      statoDb('Apro la ricerca salvata…');
+      try {
+        const r = await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(id) + '&select=ricerca,creato,video', { method: 'GET' }, true);
+        if (!r || !r[0]) throw new Error('Non trovo più questa ricerca.');
+        videoAttuali = r[0].video;
+        ricercaAttuale = r[0].ricerca;
+        ordine = 'views';
+        dbSalvataId = id;
+        mostraRisultati();
+        $('db-save').hidden = true;
+        statoDb('', '');
+        messaggio('Ricerca del ' + new Date(r[0].creato).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) +
+          ' aperta dal database: nessun credito usato. I numeri sono quelli di quel giorno.', 'info');
+        $('results').scrollIntoView({ behavior: pocoMovimento.matches ? 'auto' : 'smooth', block: 'start' });
+      } catch (e) {
+        statoDb(e.message, 'error');
+      } finally {
+        bottone.disabled = false;
+      }
+    }
+
+    // eventi del riquadro database
+    $('db-config').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const url = $('db-url').value.trim(), chiaveDb = $('db-key').value.trim();
+      if (!/^https:\/\/.+/.test(url)) { statoDb('Il Project URL deve iniziare con https://', 'error'); return; }
+      if (!chiaveDb) { statoDb('Incolla anche la chiave "anon public".', 'error'); return; }
+      dbConf = { url, chiave: chiaveDb };
+      scrivi(K_DB_CONF, dbConf);
+      statoDb('Database collegato. Ora crea un account o entra.', 'info');
+      mostraDb();
+    });
+    $('db-unlink').addEventListener('click', () => {
+      dbConf = null; dbSessione = null; cancella(K_DB_CONF); cancella(K_DB_SESSIONE);
+      statoDb('', ''); mostraDb();
+    });
+    async function accedi(nuovo) {
+      const email = $('db-email').value.trim(), password = $('db-pass').value;
+      if (!email || password.length < 6) { statoDb('Scrivi l\'email e una password di almeno 6 caratteri.', 'error'); return; }
+      $('db-enter').disabled = $('db-signup').disabled = true;
+      try {
+        if (nuovo) {
+          const d = await chiamaDb('/auth/v1/signup', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
+          if (d && d.access_token) { tieniSessione(d); statoDb('Account creato ✓', 'info'); }
+          else { statoDb('Account creato. Controlla la tua email, premi il link di conferma e poi torna qui e premi "Entra".', 'info'); return; }
+        } else {
+          tieniSessione(await chiamaDb('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password }) }, false));
+          statoDb('', '');
+        }
+        $('db-pass').value = '';
+        mostraDb();
+      } catch (e) {
+        statoDb(e.message, 'error');
+      } finally {
+        $('db-enter').disabled = $('db-signup').disabled = false;
+      }
+    }
+    $('db-login-form').addEventListener('submit', (e) => { e.preventDefault(); accedi(false); });
+    $('db-signup').addEventListener('click', () => accedi(true));
+    $('db-logout').addEventListener('click', async () => {
+      try { await chiamaDb('/auth/v1/logout', { method: 'POST' }, true); } catch (e) { /* esco comunque */ }
+      dbSessione = null; cancella(K_DB_SESSIONE); statoDb('', ''); mostraDb();
+    });
+    $('db-auto').checked = leggi(K_DB_AUTO, true) !== false;
+    $('db-auto').addEventListener('change', () => {
+      scrivi(K_DB_AUTO, $('db-auto').checked);
+      $('db-save').hidden = !dbSessione || $('db-auto').checked || !!dbSalvataId;
+    });
+    $('db-save').addEventListener('click', salvaInDb);
+    $('db-more').addEventListener('click', () => { dbTutte = true; caricaStorico(); });
+    $('db-copy-sql').addEventListener('click', async () => {
+      const b = $('db-copy-sql');
+      try { await navigator.clipboard.writeText($('db-sql').textContent); b.textContent = 'Copiato ✓'; }
+      catch (e) {
+        const sel = window.getSelection(), rg = document.createRange();
+        rg.selectNodeContents($('db-sql')); sel.removeAllRanges(); sel.addRange(rg);
+        b.textContent = 'Selezionato: premi Ctrl+C';
+      }
+      setTimeout(() => { b.textContent = 'Copia il codice'; }, 2500);
+    });
+
     // ---------- Avvio ----------
     rendiMagici();
+    mostraDb();
     mostraChiave();
     $('must-input').value = leggi(K_FRASE, '') || '';
     mostraCrediti();
