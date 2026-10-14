@@ -2172,17 +2172,17 @@
       copia.querySelector('#save-bar').remove();
       copia.querySelectorAll('.actions, .table-head + p').forEach((n) => n.remove());
 
-      // il trend lo salvo per tutti e tre i periodi: giorni, settimane e mesi
+      // il trend lo salvo per tutti e tre i periodi (giorni, settimane, mesi):
+      // nel file se ne vede uno alla volta e i pulsanti passano da uno all'altro
       const trendOriginale = copia.querySelector('#trend');
       const periodoPrima = periodo;
-      const nomiPeriodo = { giorni: 'ultimi giorni', settimane: 'ultime settimane', mesi: 'ultimi mesi' };
       Object.keys(PERIODI).forEach((p) => {
         periodo = p;
         mostraTrend(videoAttuali);
         const t = $('trend').cloneNode(true);
         t.removeAttribute('id');
-        t.querySelector('.seg').remove();
-        t.querySelector('.card-head h2').textContent = 'Il trend sta esplodendo o è passato? · ' + nomiPeriodo[p];
+        t.dataset.trend = p;
+        t.hidden = p !== periodoPrima;
         trendOriginale.before(t);
       });
       trendOriginale.remove();
@@ -2226,7 +2226,10 @@
         '<script>' + document.getElementById('lib-excel').textContent + '<\/script>\n' +
         '<script>document.getElementById("snap-excel").addEventListener("click", function () {' +
         ' var d = JSON.parse(document.getElementById("dati-ricerca").textContent);' +
-        ' RadarExcel.scarica(RadarExcel.creaXlsx(RadarExcel.fogliRicerca(d.video)), d.file); });<\/script>\n';
+        ' RadarExcel.scarica(RadarExcel.creaXlsx(RadarExcel.fogliRicerca(d.video)), d.file); });\n' +
+        // pulsanti "Ultimi giorni / settimane / mesi" del trend
+        'document.querySelectorAll("[data-trend] .seg button").forEach(function (b) { b.addEventListener("click", function () {' +
+        ' document.querySelectorAll("[data-trend]").forEach(function (c) { c.hidden = c.dataset.trend !== b.dataset.periodo; }); }); });<\/script>\n';
 
       const stile = document.querySelector('style').textContent;
       const titolo = 'Radar Nicchie · ' + ricercaAttuale;
