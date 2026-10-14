@@ -677,6 +677,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           <button type="submit" id="db-enter">Entra</button>
           <button type="button" class="btn-light" id="db-signup">Crea account</button>
         </form>
+        <p class="muted" style="font-size:.85rem">Prima volta? Prepara il database con il codice: premi
+          <button class="btn-link" id="db-copy-sql2" type="button">Copia il codice</button>, poi su supabase.com apri
+          <b>SQL Editor</b>, <b>New query</b>, incolla e premi <b>Run</b>.</p>
         <button class="btn-link" id="db-unlink" type="button">Cambia database</button>
       </div>
 
@@ -2796,6 +2799,12 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     });
     $('db-save').addEventListener('click', salvaInDb);
     $('db-more').addEventListener('click', () => { dbTutte = true; caricaStorico(); });
+    $('db-copy-sql2').addEventListener('click', async () => {
+      const b = $('db-copy-sql2');
+      try { await navigator.clipboard.writeText($('db-sql').textContent); b.textContent = 'Copiato ✓'; }
+      catch (e) { b.textContent = 'Non riesco a copiare: usa il file database/supabase.sql'; }
+      setTimeout(() => { b.textContent = 'Copia il codice'; }, 3000);
+    });
     $('db-copy-sql').addEventListener('click', async () => {
       const b = $('db-copy-sql');
       try { await navigator.clipboard.writeText($('db-sql').textContent); b.textContent = 'Copiato ✓'; }
