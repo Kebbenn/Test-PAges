@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
   <style>
-    /* Layout: una colonna centrale; in cima "Scopri" e la ricerca, poi verdetto, voti, trend e grafici, in fondo la tabella.
+    /* Layout: una colonna centrale; in cima la ricerca e il database, poi verdetto, voti, trend e grafici, in fondo la tabella.
        Stile ispirato a Magic UI: sfumature viola-rosa-arancio, puntini sullo sfondo, luci che seguono il mouse. */
     :root {
       --bg: #f7f6fc;
@@ -168,50 +168,14 @@
     .signal p { grid-column: 1 / -1; font-size: .85rem; color: var(--ink-2); }
     .signal strong { font-weight: 600; }
 
-    /* Scopri: argomenti virali di oggi */
-    .discover { display: grid; gap: 14px; }
-    .discover-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-end; justify-content: space-between; }
-    .discover-head p { font-size: .87rem; color: var(--ink-2); }
-    .discover-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    /* Campi dei moduli (frase obbligatoria, database) */
     .field { display: grid; gap: 4px; min-width: 0; }
     .field.grow { flex: 1 1 200px; }
-    select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    select {
-      font: inherit; font-size: .95rem; padding: 11px 12px; border-radius: 12px; max-width: 100%;
-      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
-    }
     .field input { padding: 11px 14px; font-size: .95rem; }
     .field.must { max-width: 520px; }
     .check { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--ink-2); cursor: pointer; justify-self: start; }
     .check input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; flex: none; padding: 0; }
     .check b { color: var(--ink); font-weight: 600; }
-    .disc-cost { font-size: .82rem; color: var(--muted); }
-    .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
-    .topic {
-      display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto; gap: 4px 14px; align-items: center;
-      padding: 12px 0; border-top: 1px solid var(--line);
-    }
-    .topic:first-child { border-top: 0; }
-    .topic .pos { font-family: var(--mono); color: var(--muted); font-size: .95rem; text-align: right; }
-    .topic .main { display: grid; gap: 2px; min-width: 0; }
-    .topic .name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-    .topic .name strong { font-size: 1.02rem; font-weight: 600; overflow-wrap: anywhere; }
-    .chip {
-      font-size: .72rem; font-weight: 600; letter-spacing: .02em; padding: 2px 7px; border-radius: 999px;
-      border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap;
-    }
-    .chip.up { color: var(--good); }
-    .chip.down { color: var(--bad); }
-    .chip.new { color: var(--accent); border-color: currentColor; }
-    .topic .meta { font-size: .82rem; color: var(--muted); }
-    .topic .ex { font-size: .82rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .topic .ex a { color: inherit; }
-    .topic button { padding: 8px 14px; font-size: .85rem; }
-    .discover-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; font-size: .82rem; color: var(--muted); }
-    @media (max-width: 560px) {
-      .topic { grid-template-columns: 2rem minmax(0, 1fr); }
-      .topic button { grid-column: 2; justify-self: start; }
-    }
 
     /* Trend: sta esplodendo o è passato? */
     .trend-head { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-start; justify-content: space-between; }
@@ -253,7 +217,8 @@
 
     /* Database online */
     .db { display: grid; gap: 14px; }
-    .db-step { display: grid; gap: 12px; }
+    .db-step { display: grid; gap: 12px; justify-items: start; }
+    .db-step > form, .db-step > details { justify-self: stretch; }
     .db-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
     .db-help summary { cursor: pointer; font-weight: 600; color: var(--g1); }
     .db-help ol { margin: 10px 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); font-size: .9rem; }
@@ -467,7 +432,7 @@
     .shimmer:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--g2) 70%, transparent); }
 
     /* Colori vivaci per etichette, chip e indicatori */
-    .card-head .label, .score .label, .verdict .label, .discover .label, .intro .label { color: var(--g1); }
+    .card-head .label, .score .label, .verdict .label, .intro .label { color: var(--g1); }
     .meter > span { background: linear-gradient(90deg, var(--g1), var(--g2)); }
     .meter.alto > span { background: var(--warn); }
     .meter.pieno > span { background: var(--bad); }
@@ -478,13 +443,7 @@
     .chip.new { background: color-mix(in srgb, var(--g1) 12%, transparent); color: var(--g1); }
     .depth input:checked + span { border-color: var(--g1); box-shadow: inset 0 0 0 1px var(--g1); background: color-mix(in srgb, var(--g1) 8%, var(--surface)); }
     .seg button[aria-pressed="true"] { color: var(--g1); }
-    input:focus, select:focus { border-color: color-mix(in srgb, var(--g1) 55%, var(--line)); }
-
-    /* Classifica "Scopri": podio per i primi tre */
-    .topic .pos { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; justify-self: end; font-weight: 600; }
-    .topic:nth-child(1) .pos { background: linear-gradient(135deg, #fde68a, #f59e0b); color: #5b3a00; }
-    .topic:nth-child(2) .pos { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; }
-    .topic:nth-child(3) .pos { background: linear-gradient(135deg, #fed7aa, #c2410c); color: #fff; }
+    input:focus { border-color: color-mix(in srgb, var(--g1) 55%, var(--line)); }
 
     /* Schede "come funziona" con icona colorata */
     .intro .ico {
@@ -525,50 +484,6 @@
         <small id="quota-note">Circa 48 analisi disponibili · si ricarica ogni mattina verso le 9</small>
       </div>
     </header>
-
-    <section class="card discover" id="discover">
-      <div class="discover-head">
-        <div class="card-head">
-          <span class="label">Scopri</span>
-          <h2>Argomenti virali in questo momento nel mondo</h2>
-          <p id="discover-sub">Cerco gli Shorts più visti degli ultimi 3 giorni e li raggruppo per hashtag. Non devi scrivere niente.</p>
-        </div>
-      </div>
-      <form class="discover-form" id="discover-form">
-        <label class="field">
-          <span class="label">Categoria</span>
-          <select id="disc-cat">
-            <option value="tutte">Tutte le categorie</option>
-            <option value="26">Cucina, fai da te e stile</option>
-            <option value="17">Sport e fitness</option>
-            <option value="20">Videogiochi</option>
-            <option value="15">Animali</option>
-            <option value="28">Scienza e tecnologia</option>
-            <option value="27">Istruzione</option>
-            <option value="22">Persone e blog</option>
-            <option value="23">Comicità</option>
-            <option value="24">Intrattenimento</option>
-            <option value="10">Musica</option>
-            <option value="1">Film e animazione</option>
-            <option value="2">Auto e motori</option>
-            <option value="19">Viaggi</option>
-          </select>
-        </label>
-        <label class="field grow">
-          <span class="label">Area (facoltativa)</span>
-          <input id="disc-area" type="text" placeholder="Es. soldi, gym, skincare…" autocomplete="off">
-        </label>
-        <button id="disc-btn" class="shimmer" type="submit">Cerca argomenti virali</button>
-      </form>
-      <label class="check"><input type="checkbox" class="solo-rank" checked> Solo Shorts con <b>rank</b> o <b>ranking</b> nel titolo</label>
-      <p class="disc-cost" id="disc-cost"></p>
-      <p class="msg info" id="disc-status" hidden></p>
-      <ol class="topics" id="topics"></ol>
-      <div class="discover-foot">
-        <span id="discover-info"></span>
-        <button class="btn-light" id="discover-more" type="button" hidden>Mostra tutti</button>
-      </div>
-    </section>
 
     <section class="search">
       <details class="key" id="key-box">
@@ -1107,12 +1022,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       scrivi(K_CREDITI, { giorno: giornoYouTube(), usati: creditiUsati() + n });
       mostraCrediti();
     }
-    function creditiAutomatici() {
-      return scoperta && scoperta.giornoYouTube === giornoYouTube() ? (scoperta.crediti || 0) : 0;
-    }
     function mostraCrediti() {
-      const auto = creditiAutomatici();
-      const usati = creditiUsati() + auto;
+      const usati = creditiUsati();
       const perc = Math.min(100, usati / CREDITI_GIORNO * 100);
       $('quota-num').textContent = nf.format(usati) + ' / ' + nf.format(CREDITI_GIORNO);
       const meter = $('quota-meter');
@@ -1123,7 +1034,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       $('quota-note').textContent = rimaste
         ? 'Circa ' + rimaste + (rimaste === 1 ? ' analisi disponibile' : ' analisi disponibili') + ' · si ricarica ogni mattina verso le 9'
         : 'Crediti finiti per oggi · si ricaricano domattina verso le 9';
-      if (auto) $('quota-note').textContent += ' · ' + nf.format(auto) + ' usati dal controllo automatico';
     }
 
     // ---------- Quanti Shorts cercare ----------
@@ -1609,234 +1519,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         li.append(a);
         lista.append(li);
       });
-    }
-
-    // ---------- Scopri: classifica del controllo automatico ----------
-    const FONTI_SCOPERTE = [
-      'https://raw.githubusercontent.com/Kebbenn/Test-PAges/claude/bold-wright-zcrnft/data/scoperte/ultimo.json',
-      'data/scoperte/ultimo.json',
-    ];
-    let scoperta = null;     // classifica del controllo automatico (se attivo su GitHub)
-    let vista = null;        // classifica mostrata adesso (automatica o cercata ora)
-    let mostraTutti = false;
-    async function caricaScoperte() {
-      for (const url of FONTI_SCOPERTE) {
-        try {
-          const r = await fetch(url + (url.startsWith('http') ? '?t=' + Math.floor(Date.now() / 300000) : ''), { cache: 'no-store' });
-          if (!r.ok) continue;
-          const d = await r.json();
-          if (d && Array.isArray(d.temi)) { scoperta = d; break; }
-        } catch (e) { /* provo la fonte successiva */ }
-      }
-      const ultima = leggi(K_ULTIMA_SCOPERTA, null);
-      // mostro la più recente tra quella automatica e l'ultima cercata da te
-      vista = [scoperta, ultima].filter((d) => d && Array.isArray(d.temi))
-        .sort((a, b) => new Date(b.aggiornato) - new Date(a.aggiornato))[0] || null;
-      mostraScoperte();
-      mostraCrediti();
-    }
-    const NOMI_LINGUE = { it: 'italiano', en: 'inglese', es: 'spagnolo', pt: 'portoghese', fr: 'francese', de: 'tedesco',
-      hi: 'hindi', ar: 'arabo', ru: 'russo', ja: 'giapponese', ko: 'coreano', id: 'indonesiano', tr: 'turco', vi: 'vietnamita',
-      th: 'thailandese', bn: 'bengalese', ur: 'urdu', ta: 'tamil', te: 'telugu', pl: 'polacco', nl: 'olandese', zh: 'cinese' };
-    function mostraScoperte() {
-      const ol = $('topics');
-      ol.replaceChildren();
-      if (!vista || !vista.temi.length) {
-        ol.append(paragrafo(vista
-          ? 'Non ho trovato argomenti abbastanza forti. Prova con un\'altra categoria o togli l\'area.'
-          : 'Scegli una categoria e premi "Cerca argomenti virali". Qui comparirà la classifica.', 'empty-chart'));
-        $('discover-info').textContent = '';
-        $('discover-more').hidden = true;
-        return;
-      }
-      const quando = new Date(vista.aggiornato);
-      $('discover-info').textContent = (vista.ambito ? vista.ambito + ' · ' : 'Controllo automatico · ') +
-        'aggiornato ' + quando.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) +
-        ' alle ' + quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + nf.format(vista.shortsAnalizzati) + ' Shorts controllati';
-      const lista = mostraTutti ? vista.temi : vista.temi.slice(0, 10);
-      lista.forEach((t) => {
-        const li = document.createElement('li'); li.className = 'topic';
-        const pos = document.createElement('span'); pos.className = 'pos'; pos.textContent = t.posizione;
-        const main = document.createElement('div'); main.className = 'main';
-        const name = document.createElement('div'); name.className = 'name';
-        const st = document.createElement('strong'); st.textContent = '#' + t.tag;
-        name.append(st);
-        const chip = (testo, cls) => { const c = document.createElement('span'); c.className = 'chip ' + (cls || ''); c.textContent = testo; name.append(c); };
-        if (t.nuovo) chip('Nuovo', 'new');
-        else if (t.variazione > 0) chip('↑ ' + t.variazione, 'up');
-        else if (t.variazione < 0) chip('↓ ' + Math.abs(t.variazione), 'down');
-        else if (t.variazione === null && !vista.ambito) chip('Rientrato');
-        if (t.giorniInClassifica >= 3) chip(t.giorniInClassifica + ' giorni di fila');
-        if (t.lingua) chip(NOMI_LINGUE[t.lingua] || t.lingua.toUpperCase());
-        const meta = document.createElement('span'); meta.className = 'meta';
-        meta.textContent = t.shorts + ' Shorts · ' + t.canali + ' canali · di solito ' + compatto(t.vpdTipico) + ' visualizzazioni al giorno';
-        main.append(name, meta);
-        if (t.esempi && t.esempi[0]) {
-          const ex = document.createElement('span'); ex.className = 'ex';
-          const a = document.createElement('a');
-          a.href = linkVideo(t.esempi[0].id); a.target = '_blank'; a.rel = 'noopener';
-          a.textContent = t.esempi[0].titolo;
-          ex.append('Il più forte: ', a, ' · ' + compatto(t.esempi[0].views));
-          main.append(ex);
-        }
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-light'; b.textContent = 'Analizza';
-        b.addEventListener('click', () => {
-          $('search-input').value = '#' + t.tag;
-          $('search-form').requestSubmit();
-          $('search-form').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-        });
-        li.append(pos, main, b);
-        ol.append(li);
-      });
-      $('discover-more').hidden = vista.temi.length <= 10;
-      $('discover-more').textContent = mostraTutti ? 'Mostra solo i primi 10' : 'Mostra tutti (' + vista.temi.length + ')';
-    }
-
-    // ---------- Scopri adesso, dal sito ----------
-    const K_ULTIMA_SCOPERTA = 'radar-ultima-scoperta';
-    const K_STORICO_SCOPERTE = 'radar-storico-scoperte';
-    const TUTTE_CATEGORIE = ['', '1', '2', '10', '15', '17', '19', '20', '22', '23', '24', '26', '27', '28'];
-    const GIORNI_SCOPRI = 3;
-    // Hashtag troppo generici per dire qualcosa sull'argomento
-    const HASHTAG_GENERICI = new Set(('shorts short shortsvideo shortvideo shortsfeed shortsviral youtubeshorts ytshorts yt youtube ' +
-      'viral viralvideo viralshorts viralshort trending trend trendingshorts fyp foryou foryoupage explore explorepage ' +
-      'reels reel reelsinstagram instagram tiktok tiktokviral subscribe like likes comment share follow new video videos ' +
-      'funny funnyvideo funnyshorts comedy meme memes lol love cute satisfying asmr music song edit edits capcut ' +
-      'shortfeed shortsbeta shortsyoutube 1million 1m 100k 4k hd 2024 2025 2026 india usa uk').split(' '));
-
-    function passaggiScopri() {
-      const area = $('disc-area').value.trim();
-      const cat = $('disc-cat').value;
-      if (area) return [{ q: area, cat: cat === 'tutte' ? '' : cat, pagine: 2 }];
-      if (cat === 'tutte') return TUTTE_CATEGORIE.map((c) => ({ q: '', cat: c, pagine: 1 }));
-      return [{ q: '', cat, pagine: 2 }];
-    }
-    const costoScopri = () => passaggiScopri().reduce((a, p) => a + p.pagine * 100, 0) + 15;
-    function mostraCostoScopri() {
-      const c = costoScopri();
-      $('disc-cost').textContent = 'Questa ricerca usa circa ' + nf.format(c) + ' crediti' +
-        (c > 1000 ? '. Per spendere meno scegli una sola categoria (circa 215 crediti).' : '.');
-    }
-    function statoScopri(testo, tipo) {
-      const p = $('disc-status');
-      p.hidden = !testo;
-      p.textContent = testo || '';
-      p.className = 'msg ' + (tipo || 'info');
-    }
-    function trovaHashtag(testo, escludi) {
-      const trovati = new Set();
-      for (const m of (testo || '').matchAll(/#([\p{L}\p{N}_]+)/gu)) {
-        const t = m[1].toLowerCase();
-        if (t.length < 3 || t.length > 30 || /^\d+$/.test(t) || HASHTAG_GENERICI.has(t) || escludi(t)) continue;
-        trovati.add(t);
-        if (trovati.size >= 8) break;   // chi mette 40 hashtag non deve contare 40 volte
-      }
-      return [...trovati];
-    }
-
-    async function scopriAdesso() {
-      const passaggi = passaggiScopri();
-      const area = $('disc-area').value.trim();
-      const sel = $('disc-cat');
-      const nomeCat = sel.options[sel.selectedIndex].text;
-      const ambito = (area ? 'Area "' + area + '"' + (sel.value !== 'tutte' ? ' in ' + nomeCat : '') : nomeCat) + (soloRank ? ' · solo ranking' : '');
-      const ora = Date.now();
-      const dopo = new Date(ora - GIORNI_SCOPRI * GIORNO).toISOString();
-
-      // 1. gli Shorts più visti degli ultimi giorni
-      const ids = new Set();
-      for (let i = 0; i < passaggi.length; i++) {
-        const ps = passaggi[i];
-        statoScopri('Cerco gli Shorts più visti… (' + (i + 1) + ' di ' + passaggi.length + ')');
-        let pagina = null;
-        for (let k = 0; k < ps.pagine; k++) {
-          const par = {
-            part: 'id', type: 'video', videoDuration: 'short', order: 'viewCount', maxResults: 50,
-            publishedAfter: dopo, fields: 'nextPageToken,items/id/videoId',
-          };
-          const q = conRank(ps.q);
-          if (q) par.q = q;
-          if (ps.cat) par.videoCategoryId = ps.cat;
-          if (pagina) par.pageToken = pagina;
-          let d;
-          try { d = await chiama('search', par, 100); } catch (e) {
-            if (passaggi.length > 1 && /errore \(400\)/.test(e.message)) break;   // categoria non valida: la salto
-            throw e;
-          }
-          (d.items || []).forEach((it) => it.id && it.id.videoId && ids.add(it.id.videoId));
-          pagina = d.nextPageToken;
-          if (!pagina) break;
-        }
-      }
-
-      // 2. i numeri di ogni Short
-      statoScopri('Leggo le visualizzazioni di ' + ids.size + ' Shorts…');
-      const paroleArea = parole(area);
-      const escludi = (t) => tagRank(t) || (paroleArea.length > 0 && parole(t).every((p) => paroleArea.includes(p)));
-      const video = [];
-      for (const gruppo of aGruppi([...ids], 50)) {
-        const d = await chiama('videos', {
-          part: 'snippet,statistics,contentDetails', id: gruppo.join(','),
-          fields: 'items(id,snippet(title,description,channelId,channelTitle,publishedAt,defaultLanguage,defaultAudioLanguage),statistics/viewCount,contentDetails/duration)',
-        }, 1);
-        (d.items || []).forEach((v) => {
-          const durata = durataSecondi(v.contentDetails && v.contentDetails.duration);
-          if (!v.statistics || v.statistics.viewCount == null || !durata || durata > DURATA_MAX_SHORT) return;
-          if (soloRank && !haRank(decodifica(v.snippet.title))) return;
-          const views = +v.statistics.viewCount;
-          const giorni = Math.max((ora - new Date(v.snippet.publishedAt)) / GIORNO, 1);
-          const lingua = (v.snippet.defaultAudioLanguage || v.snippet.defaultLanguage || '').slice(0, 2).toLowerCase() || null;
-          video.push({
-            id: v.id, titolo: decodifica(v.snippet.title), canale: decodifica(v.snippet.channelTitle), canaleId: v.snippet.channelId,
-            lingua, views, vpd: views / giorni,
-            temi: trovaHashtag(decodifica(v.snippet.title) + ' ' + decodifica(v.snippet.description), escludi),
-          });
-        });
-      }
-
-      // 3. raggruppo per hashtag: serve più di un canale, e conta solo lo Short migliore di ogni canale
-      const gruppi = new Map();
-      video.forEach((v) => v.temi.forEach((t) => { if (!gruppi.has(t)) gruppi.set(t, []); gruppi.get(t).push(v); }));
-      const temi = [];
-      gruppi.forEach((lista, tag) => {
-        const canali = new Map();
-        lista.forEach((v) => { if (!canali.has(v.canaleId) || canali.get(v.canaleId).vpd < v.vpd) canali.set(v.canaleId, v); });
-        if (lista.length < 2 || canali.size < 2) return;
-        const lingue = {};
-        lista.forEach((v) => { if (v.lingua) lingue[v.lingua] = (lingue[v.lingua] || 0) + 1; });
-        const migliori = [...canali.values()].sort((a, b) => b.vpd - a.vpd);
-        temi.push({
-          tag,
-          punteggio: Math.round(migliori.reduce((a, v) => a + v.vpd, 0)),
-          shorts: lista.length,
-          canali: canali.size,
-          vpdTipico: Math.round(mediana(lista.map((v) => v.vpd))),
-          lingua: (Object.entries(lingue).sort((a, b) => b[1] - a[1])[0] || [null])[0],
-          esempi: migliori.slice(0, 3).map((v) => ({ id: v.id, titolo: v.titolo, canale: v.canale, views: v.views })),
-        });
-      });
-      temi.sort((a, b) => b.punteggio - a.punteggio);
-      const top = temi.slice(0, 40);
-
-      // 4. confronto con l'ultima volta che hai cercato la stessa cosa
-      const chiaveAmbito = (sel.value + '|' + area.toLowerCase() + (soloRank ? '|rank' : ''));
-      const storico = leggi(K_STORICO_SCOPERTE, {});
-      const prima = storico[chiaveAmbito];
-      const giaVisti = new Set(prima ? prima.visti : []);
-      top.forEach((t, i) => {
-        t.posizione = i + 1;
-        const p = prima && prima.ultima.find((x) => x.tag === t.tag);
-        t.variazione = p ? p.posizione - t.posizione : null;
-        t.nuovo = !!prima && !giaVisti.has(t.tag);
-        if (!prima) t.variazione = 0;   // prima volta: niente frecce
-      });
-      storico[chiaveAmbito] = {
-        ultima: top.map((t) => ({ tag: t.tag, posizione: t.posizione })),
-        visti: [...new Set([...giaVisti, ...top.map((t) => t.tag)])].slice(-400),
-      };
-      scrivi(K_STORICO_SCOPERTE, storico);
-
-      return { aggiornato: new Date().toISOString(), ambito, shortsAnalizzati: video.length, giorniIndietro: GIORNI_SCOPRI, temi: top };
     }
 
     // ---------- Trend: sta esplodendo o è passato? ----------
@@ -2509,7 +2191,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (videoAttuali.length) mostraTrend(videoAttuali);
     }));
 
-    $('discover-more').addEventListener('click', () => { mostraTutti = !mostraTutti; mostraScoperte(); });
     document.querySelectorAll('.solo-rank').forEach((c) => {
       c.checked = soloRank;
       c.addEventListener('change', () => {
@@ -2518,30 +2199,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         document.querySelectorAll('.solo-rank').forEach((x) => { x.checked = soloRank; });
       });
     });
-    $('disc-cat').addEventListener('change', mostraCostoScopri);
-    $('disc-area').addEventListener('input', mostraCostoScopri);
-    $('discover-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!chiave) {
-        $('key-box').open = true;
-        statoScopri('Prima incolla la tua chiave YouTube qui sotto e premi Salva.', 'error');
-        return;
-      }
-      $('disc-btn').disabled = true;
-      try {
-        const risultato = await scopriAdesso();
-        vista = risultato;
-        mostraTutti = false;
-        scrivi(K_ULTIMA_SCOPERTA, risultato);
-        statoScopri('', '');
-        mostraScoperte();
-      } catch (err) {
-        statoScopri(err.message, 'error');
-      } finally {
-        $('disc-btn').disabled = false;
-      }
-    });
-
     $('save-html').addEventListener('click', salvaHtml);
     $('dl-excel').addEventListener('click', scaricaExcel);
 
@@ -2823,8 +2480,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     $('must-input').value = leggi(K_FRASE, '') || '';
     mostraCrediti();
     aggiornaBottoni();
-    mostraCostoScopri();
-    caricaScoperte();
     setInterval(mostraCrediti, 60000);
   </script>
 </body>
