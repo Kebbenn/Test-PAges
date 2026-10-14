@@ -142,6 +142,13 @@
       padding: 1px 8px; margin-left: 6px; vertical-align: 2px;
     }
     .step-hint { font-size: .85rem; color: var(--muted); margin-top: -4px; }
+    .chip {
+      font-size: .72rem; font-weight: 600; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--ink-2); white-space: nowrap;
+    }
+    .chip.new { border-color: currentColor; }
+    .rank-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: .88rem; color: var(--ink-2); }
+    .rank-note b { color: var(--ink); }
     .filter-box {
       display: grid; gap: 12px; padding: 14px; border-radius: 12px;
       background: color-mix(in srgb, var(--g1) 5%, var(--bg)); border: 1px dashed color-mix(in srgb, var(--g1) 30%, var(--line));
@@ -540,26 +547,12 @@
             <label class="step-title" for="search-input">Cosa vuoi cercare?</label>
             <p class="step-hint">Scrivi la nicchia o l'argomento, come lo scriveresti su YouTube.</p>
             <input id="search-input" type="search" placeholder="Es. ricette air fryer, allenamento a casa…" required>
+            <p class="rank-note"><span class="chip new">Sempre attivo</span><span>Solo Shorts con <b>rank</b> o <b>ranking</b> nel titolo</span></p>
           </div>
         </div>
 
         <div class="step">
           <span class="step-n">2</span>
-          <div class="step-body">
-            <span class="step-title">Filtri sul titolo <span class="opt">facoltativi</span></span>
-            <p class="step-hint">Tieni solo gli Shorts che hanno queste parole nel titolo.</p>
-            <div class="filter-box">
-              <label class="field must">
-                <span class="label">Il titolo deve contenere anche</span>
-                <input id="must-input" type="text" placeholder="Una parola o una frase, es. pizza oppure air fryer" autocomplete="off">
-              </label>
-              <label class="check"><input type="checkbox" class="solo-rank" checked><span>Solo Shorts con <b>rank</b> o <b>ranking</b> nel titolo</span></label>
-            </div>
-          </div>
-        </div>
-
-        <div class="step">
-          <span class="step-n">3</span>
           <div class="step-body">
             <span class="step-title">Quanti Shorts cercare?</span>
             <p class="step-hint">Più Shorts trovi, più i risultati sono affidabili, ma usi più crediti.</p>
@@ -1153,8 +1146,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     }
 
     // ---------- Solo Shorts di classifiche: "rank" o "ranking" nel titolo ----------
-    const K_SOLO_RANK = 'radar-solo-rank';
-    let soloRank = leggi(K_SOLO_RANK, true) !== false;
+    const soloRank = true;   // il sito cerca sempre e solo Shorts di classifiche (rank / ranking)
     // trova rank, ranks, ranked, ranking, rankings (anche come #ranking), ma non parole come "frank" o "cranky"
     const RE_RANK = /(^|[^\p{L}])rank(s|ed|ing|ings)?(?![\p{L}])/iu;
     const haRank = (titolo) => RE_RANK.test(titolo || '');
@@ -2200,8 +2192,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     $('search-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const termine = $('search-input').value.trim();
-      const frase = $('must-input').value.trim();
-      scrivi(K_FRASE, frase);
+      const frase = '';
       if (!termine) return;
       if (!chiave) {
         $('key-box').open = true;
@@ -2233,9 +2224,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       }
     });
 
-    $('must-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); $('search-form').requestSubmit(); }
-    });
 
     document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
       ordine = b.dataset.sort;
@@ -2248,14 +2236,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (videoAttuali.length) mostraTrend(videoAttuali);
     }));
 
-    document.querySelectorAll('.solo-rank').forEach((c) => {
-      c.checked = soloRank;
-      c.addEventListener('change', () => {
-        soloRank = c.checked;
-        scrivi(K_SOLO_RANK, soloRank);
-        document.querySelectorAll('.solo-rank').forEach((x) => { x.checked = soloRank; });
-      });
-    });
     $('save-html').addEventListener('click', salvaHtml);
     $('dl-excel').addEventListener('click', scaricaExcel);
 
@@ -2426,7 +2406,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           method: 'POST', headers: { Prefer: 'return=representation' },
           body: JSON.stringify({
             ricerca: ricercaAttuale,
-            impostazioni: { livello, soloRank, frase: $('must-input').value.trim() || null },
+            impostazioni: { livello, soloRank },
             riassunto: riassuntoAttuale(),
             video: videoAttuali,
           }),
@@ -2534,7 +2514,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     rendiMagici();
     mostraDb();
     mostraChiave();
-    $('must-input').value = leggi(K_FRASE, '') || '';
     mostraCrediti();
     aggiornaBottoni();
     setInterval(mostraCrediti, 60000);
