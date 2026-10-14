@@ -2575,9 +2575,12 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const K_DB_CONF = 'radar-db-config';
     const K_DB_SESSIONE = 'radar-db-sessione';
     const K_DB_AUTO = 'radar-db-auto';
-    // il database di Radar Nicchie: l'indirizzo è già scritto qui, così su ogni PC basta la chiave pubblica
+    // il database di Radar Nicchie: indirizzo e chiave pubblica sono già scritti qui, così su ogni PC basta entrare.
+    // La chiave "publishable" è fatta per stare nei siti: senza accesso con email e password non legge né scrive niente.
     const DB_URL_PREDEFINITO = 'https://omqusyuzffmwrhrvyitm.supabase.co';
-    let dbConf = leggi(K_DB_CONF, null);
+    const DB_CHIAVE_PREDEFINITA = 'sb_publishable__oFQD_ntx4uVhOaTO09wsQ_94FLMBdo';
+    const dbPredefinito = () => ({ url: DB_URL_PREDEFINITO, chiave: DB_CHIAVE_PREDEFINITA });
+    let dbConf = leggi(K_DB_CONF, null) || dbPredefinito();
     let dbSessione = leggi(K_DB_SESSIONE, null);
     let dbTutte = false;
     let dbSalvataId = null;   // la ricerca mostrata è già nel database?
@@ -2754,8 +2757,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       mostraDb();
     });
     $('db-unlink').addEventListener('click', () => {
+      // torno al database di Radar Nicchie; per usarne un altro si incollano indirizzo e chiave nuovi
       dbConf = null; dbSessione = null; cancella(K_DB_CONF); cancella(K_DB_SESSIONE);
-      statoDb('', ''); mostraDb();
+      $('db-url').value = ''; $('db-key').value = '';
+      statoDb('Scrivi indirizzo e chiave del database che vuoi usare.', 'info'); mostraDb();
     });
     async function accedi(nuovo) {
       const email = $('db-email').value.trim(), password = $('db-pass').value;
