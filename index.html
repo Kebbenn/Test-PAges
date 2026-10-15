@@ -275,7 +275,7 @@
     .db-list .m { font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; }
     .db-list .b { display: flex; gap: 6px; }
     .db-list .b button { padding: 7px 12px; font-size: .82rem; }
-    @media (max-width: 560px) { .db-list li { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .db-list li { grid-template-columns: minmax(0, 1fr); } }
 
     /* Verdetto con punteggio finale */
     .verdict-main { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 24px; align-items: center; }
@@ -304,6 +304,50 @@
     .foot { display: grid; gap: 6px; padding: 8px 4px 0; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
     .foot a { color: var(--ink-2); }
     .foot b { font-weight: 600; color: var(--ink-2); }
+
+    /* Menu delle due pagine */
+    .tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface);
+      border: 1px solid var(--line); box-shadow: var(--shadow); justify-self: start; max-width: 100%; }
+    .tabs a { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 10px; text-decoration: none;
+      color: var(--ink-2); font-weight: 600; font-size: .95rem; }
+    .tabs a svg { width: 18px; height: 18px; }
+    .tabs a[aria-current="page"] { color: #fff; background: linear-gradient(120deg, var(--g1), var(--g2) 60%, var(--g3)); }
+    .tabs a:not([aria-current="page"]):hover { background: color-mix(in srgb, var(--g1) 8%, transparent); }
+    body[data-vista="storico"] [data-vista="analizza"], body:not([data-vista="storico"]) [data-vista="storico"] { display: none !important; }
+    .db-line { font-size: .85rem; color: var(--muted); }
+    .db-line a { color: var(--g1); font-weight: 600; }
+
+    /* Filtri dello storico */
+    .filters { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 14px; border-radius: 12px;
+      background: color-mix(in srgb, var(--g1) 4%, var(--bg)); border: 1px solid var(--line); }
+    .filters .field { flex: 0 1 auto; }
+    .filters .field.grow { flex: 1 1 180px; }
+    select {
+      font: inherit; font-size: .9rem; padding: 10px 12px; border-radius: 10px; max-width: 100%;
+      border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    }
+    select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .db-list .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .db-list .chips .chip { font-size: .74rem; font-weight: 500; white-space: normal; }
+    .db-list .chips .chip b { font-weight: 700; color: var(--ink); }
+
+    /* Quanto ha guardato la ricerca */
+    .run-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+    .run-stats > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; display: grid; gap: 2px; box-shadow: var(--shadow); }
+    .run-stats .v { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(120deg, var(--g1), var(--g2) 60%, var(--g3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .run-stats p { font-size: .8rem; color: var(--muted); }
+
+    /* Grafici 6 e 7 più piccoli */
+    .rank.compact { gap: 4px; }
+    .rank.compact a { padding: 4px 8px; }
+    .rank.compact .t { font-size: .88rem; }
+    .rank.compact .c { font-size: .74rem; }
+    .rank.compact .track { height: 5px; }
+    .compact-card .big-line { font-size: .92rem; }
+    .compact-card #newch .rank a { padding: 4px 8px; }
+    .compact-card #newch .t { font-size: .88rem; }
+    .compact-card #newch .c { font-size: .74rem; }
 
     /* Verdetto finale */
     .verdict {
@@ -549,7 +593,18 @@
       </div>
     </header>
 
-    <section class="search">
+    <nav class="tabs" aria-label="Pagine del sito">
+      <a href="#analizza" data-tab="analizza">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        Analizza
+      </a>
+      <a href="#storico" data-tab="storico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        Le tue ricerche
+      </a>
+    </nav>
+
+    <section class="search" data-vista="analizza">
       <details class="key" id="key-box">
         <summary id="key-summary">La tua chiave YouTube</summary>
         <div class="inner">
@@ -598,9 +653,10 @@
             e scarto quelli che non parlano del tuo argomento.</p>
         </div>
       </form>
+      <p class="db-line" id="db-line"></p>
     </section>
 
-    <section class="card db" id="db">
+    <section class="card db" id="db" data-vista="storico">
       <div class="card-head">
         <span class="label">Database online · gratis</span>
         <h2>Le tue ricerche, da qualsiasi computer</h2>
@@ -684,23 +740,55 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           <label class="check"><input type="checkbox" id="db-auto" checked> Salva automaticamente ogni ricerca</label>
           <button class="btn-link" id="db-logout" type="button">Esci</button>
         </div>
+        <div class="filters" id="db-filters">
+          <label class="field grow"><span class="label">Cerca per nome</span>
+            <input id="f-nome" type="search" placeholder="Es. pizza" autocomplete="off"></label>
+          <label class="field"><span class="label">Ordina per</span>
+            <select id="f-ordine">
+              <option value="data">Più recenti</option>
+              <option value="finale">Punteggio finale</option>
+              <option value="viral">Viralità</option>
+              <option value="opp">Opportunità</option>
+              <option value="rep">Replicabilità</option>
+              <option value="piccolo">Canale piccolo (valore tipico)</option>
+              <option value="ripetuti">Canali che ci hanno provato più volte</option>
+              <option value="shorts">Shorts trovati</option>
+              <option value="canali">Canali diversi</option>
+            </select></label>
+          <label class="field"><span class="label">Punteggio finale</span>
+            <select id="f-finale"><option value="0">Tutti</option><option value="35">35 o più</option><option value="50">50 o più</option><option value="65">65 o più</option></select></label>
+          <label class="field"><span class="label">Viralità</span>
+            <select id="f-viral"><option value="0">Tutti</option><option value="30">30 o più</option><option value="50">50 o più</option><option value="70">70 o più</option></select></label>
+          <label class="field"><span class="label">Opportunità</span>
+            <select id="f-opp"><option value="0">Tutti</option><option value="30">30 o più</option><option value="50">50 o più</option><option value="70">70 o più</option></select></label>
+          <label class="field"><span class="label">Replicabilità</span>
+            <select id="f-rep"><option value="0">Tutti</option><option value="30">30 o più</option><option value="50">50 o più</option><option value="70">70 o più</option></select></label>
+          <label class="field"><span class="label">Un canale piccolo fa di solito</span>
+            <select id="f-piccolo"><option value="0">Tutti</option><option value="1000">almeno 1k</option><option value="5000">almeno 5k</option><option value="10000">almeno 10k</option><option value="50000">almeno 50k</option><option value="100000">almeno 100k</option></select></label>
+          <label class="field"><span class="label">Canali che ci hanno provato 3+ volte</span>
+            <select id="f-ripetuti"><option value="0">Tutti</option><option value="1">almeno 1</option><option value="3">almeno 3</option><option value="5">almeno 5</option><option value="10">almeno 10</option></select></label>
+          <label class="field"><span class="label">Shorts trovati</span>
+            <select id="f-shorts"><option value="0">Tutti</option><option value="50">almeno 50</option><option value="100">almeno 100</option><option value="200">almeno 200</option></select></label>
+          <button class="btn-link" id="f-reset" type="button">Togli i filtri</button>
+        </div>
+        <p class="muted" id="f-conteggio" style="font-size:.85rem"></p>
         <ul class="db-list" id="db-list"></ul>
-        <button class="btn-light" id="db-more" type="button" hidden>Mostra tutte</button>
+        <button class="btn-light" id="db-more" type="button" hidden>Mostra altre</button>
       </div>
 
       <p class="msg info" id="db-status" hidden></p>
     </section>
 
-    <div id="msg" hidden></div>
+    <div id="msg" data-vista="analizza" hidden></div>
 
-    <section class="intro" id="intro">
+    <section class="intro" id="intro" data-vista="analizza">
       <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></svg></span><span class="label">Vale la pena?</span><h2>Un punteggio da 0 a 100</h2><p>Mette insieme crescita, spazio per i piccoli e possibilità di ripetere il successo.</p></div>
       <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V12M12 20V6M19 20v-9"/></svg></span><span class="label">Trend</span><h2>Sta esplodendo o è passato?</h2><p>Confronta gli ultimi giorni, settimane e mesi con il periodo prima.</p></div>
-      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span><span class="label">Replicabilità</span><h2>Funziona sempre o è fortuna?</h2><p>Guarda se chi ci prova più volte fa buoni numeri, e se lo spazio si sta saturando.</p></div>
+      <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span><span class="label">Replicabilità</span><h2>Funziona sempre o è fortuna?</h2><p>Guarda se chi ci prova più volte fa buoni numeri e quante probabilità ci sono di fare il botto.</p></div>
       <div><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 4l1 2 2 .3-1.5 1.4.4 2.1-1.9-1-1.9 1 .4-2.1L14 6.3l2-.3z"/></svg></span><span class="label">Come farlo</span><h2>Durata, titoli, pubblico</h2><p>Quanto deve durare, quali parole usare nel titolo e quanto il pubblico partecipa.</p></div>
     </section>
 
-    <div id="results" hidden>
+    <div id="results" data-vista="analizza" hidden>
       <div style="display:grid; grid-template-columns:minmax(0, 1fr); gap:16px">
         <div class="save-bar" id="save-bar">
           <p id="save-title">Risultati</p>
@@ -709,7 +797,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             Salva la ricerca (HTML)
           </button>
           <button id="db-save" class="btn-light" type="button" hidden>Salva nel database online</button>
+          <span class="muted" id="db-save-status" style="font-size:.85rem"></span>
         </div>
+        <div class="run-stats" id="run-stats"></div>
         <section class="verdict" id="verdict">
           <span class="label">Vale la pena?</span>
           <div class="verdict-main">
@@ -807,17 +897,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
           <section class="card wide">
             <div class="card-head">
-              <span class="label">3 · Piccoli canali</span>
-              <h2>Video con molte più visualizzazioni che iscritti</h2>
-              <p>"×10" vuol dire che il video ha 10 volte le visualizzazioni rispetto agli iscritti del canale.</p>
-            </div>
-            <ol class="rank" id="rank"></ol>
-          </section>
-
-          <section class="card wide">
-            <div class="card-head">
               <div class="card-top">
-                <span class="label">4 · Fasce di visualizzazioni</span>
+                <span class="label">3 · Fasce di visualizzazioni</span>
                 <span class="chip" id="bands-count">basato su 0 Shorts</span>
               </div>
               <h2>Shorts per fasce di visualizzazioni</h2>
@@ -828,7 +909,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
           <section class="card">
             <div class="card-head">
-              <span class="label">5 · Quanto potresti fare tu</span>
+              <span class="label">4 · Quanto potresti fare tu</span>
               <h2>Cosa fa di solito un canale piccolo</h2>
             </div>
             <div class="potential" id="potential"></div>
@@ -836,17 +917,26 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
           <section class="card">
             <div class="card-head">
-              <span class="label">6 · Concorrenza</span>
+              <span class="label">5 · Concorrenza</span>
               <h2>Chi si prende le visualizzazioni</h2>
               <p>Se pochi canali si prendono quasi tutto, è difficile entrare.</p>
             </div>
             <div id="share" style="display:grid; gap:12px"></div>
           </section>
 
-          <section class="card wide">
+          <section class="card compact-card">
+            <div class="card-head">
+              <span class="label">6 · Piccoli canali</span>
+              <h2>Video con molte più visualizzazioni che iscritti</h2>
+              <p>"×10" vuol dire che il video ha 10 volte le visualizzazioni rispetto agli iscritti del canale.</p>
+            </div>
+            <ol class="rank compact" id="rank"></ol>
+          </section>
+
+          <section class="card compact-card">
             <div class="card-head">
               <span class="label">7 · Canali nuovi</span>
-              <h2>Canali aperti negli ultimi 6 mesi</h2>
+              <h2>Canali aperti negli ultimi 3 mesi</h2>
               <p>Se ci sono canali nuovi che vanno bene, puoi partire da zero anche tu.</p>
             </div>
             <div id="newch" style="display:grid; gap:12px"></div>
@@ -869,28 +959,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             <div class="chart" id="consistency" style="display:grid; gap:10px"></div>
           </section>
 
-          <section class="card wide">
-            <div class="card-head">
-              <span class="label">9 · Si sta saturando?</span>
-              <h2>Quanti Shorts escono e quante visualizzazioni fa ognuno</h2>
-              <p>Se escono sempre più Shorts ma ognuno fa meno visualizzazioni, troppa gente lo sta copiando.</p>
-            </div>
-            <div class="trend-charts">
-              <div>
-                <h3>Shorts usciti ogni mese</h3>
-                <div class="chart" id="chart-sat-n"></div>
-              </div>
-              <div>
-                <h3>Visualizzazioni tipiche per Short</h3>
-                <div class="chart" id="chart-sat-v"></div>
-              </div>
-            </div>
-            <p class="muted" style="font-size:.82rem" id="sat-note"></p>
-          </section>
-
           <section class="card">
             <div class="card-head">
-              <span class="label">10 · Percentuale di "colpi"</span>
+              <span class="label">9 · Percentuale di "colpi"</span>
               <h2>Quante probabilità ci sono di fare il botto</h2>
               <p>Su tutti gli Shorts più pertinenti, quanti superano queste soglie di visualizzazioni.</p>
             </div>
@@ -899,7 +970,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
           <section class="card">
             <div class="card-head">
-              <span class="label">11 · Durata migliore</span>
+              <span class="label">10 · Durata migliore</span>
               <h2>Quanto deve durare il tuo Short</h2>
               <p>Visualizzazioni tipiche per ogni durata. La colonna piena è la durata che funziona meglio.</p>
             </div>
@@ -909,7 +980,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
           <section class="card">
             <div class="card-head">
-              <span class="label">12 · Formato del titolo</span>
+              <span class="label">11 · Formato del titolo</span>
               <h2>Le parole dei titoli che funzionano</h2>
             </div>
             <div id="formats" style="display:grid; gap:10px"></div>
@@ -917,7 +988,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
           <section class="card">
             <div class="card-head">
-              <span class="label">13 · Coinvolgimento</span>
+              <span class="label">12 · Coinvolgimento</span>
               <h2>Quanto il pubblico partecipa</h2>
               <p>Like e commenti ogni 1.000 visualizzazioni: più sono alti, più il pubblico è appassionato.</p>
             </div>
@@ -1147,6 +1218,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     // così una ricerca riaperta dal database giorni dopo dà gli stessi risultati di quel giorno.
     let oraAnalisi = Date.now();
     let livelloRicerca = null;   // Veloce / Normale / Profonda usato per la ricerca mostrata
+    let infoRicerca = { guardati: null };   // quanti Shorts ha guardato su YouTube la ricerca mostrata
+    let ultimiGuardati = 0;
 
     // ---------- Memoria del browser (sempre protetta) ----------
     function leggi(k, def) {
@@ -1326,6 +1399,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           if (!pagina) break;
         }
       }
+      ultimiGuardati = ids.length;
       if (!ids.length) return [];
       const paroleChiave = parole(termine);
 
@@ -1339,8 +1413,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         video.push(...(d.items || []));
       }
 
-      messaggio('Controllo quanti iscritti hanno i canali…', 'info');
       const canaliIds = [...new Set(video.map((v) => v.snippet.channelId))];
+      messaggio('Controllo quanti iscritti hanno i ' + canaliIds.length + ' canali trovati…', 'info');
       const iscritti = {};
       const nascita = {};
       for (const gruppo of aGruppi(canaliIds, 50)) {
@@ -1452,7 +1526,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       return a[b + 1] !== undefined ? a[b] + (a[b + 1] - a[b]) * (pos - b) : a[b];
     }
     const PICCOLO = 1e4;            // "canale piccolo" = sotto 10.000 iscritti
-    const GIORNI_NUOVO = 182;       // "canale nuovo" = aperto negli ultimi 6 mesi
+    const GIORNI_NUOVO = 91;        // "canale nuovo" = aperto negli ultimi 3 mesi
 
     function perCanale(video) {
       const mappa = new Map();
@@ -1495,8 +1569,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const nc = canaliNuovi(video);
       if (nc.canali.length >= 3) {
         segnali.push({
-          nome: 'Canali nuovi che vanno bene', peso: 0.3, voto: limita(nc.bene.length / nc.canali.length * 400),
-          testo: nc.bene.length + ' canali su ' + nc.canali.length + ' sono nati negli ultimi 6 mesi e vanno sopra la media.',
+          nome: 'Canali nuovi che vanno bene', peso: 0.3, voto: limita(nc.bene.length / nc.canali.length * 800),
+          testo: nc.bene.length + ' canali su ' + nc.canali.length + ' sono nati negli ultimi 3 mesi e vanno sopra la media.',
         });
       }
       const cc = concorrenza(video);
@@ -1864,7 +1938,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     // ---------- Grafico 3: classifica piccoli canali ----------
     function classifica(lista, video) {
       lista.replaceChildren();
-      const top = video.filter((v) => v.rapporto != null).sort((a, b) => b.rapporto - a.rapporto).slice(0, 10);
+      const top = video.filter((v) => v.rapporto != null).sort((a, b) => b.rapporto - a.rapporto).slice(0, 6);
       if (!top.length) {
         const p = document.createElement('p'); p.className = 'empty-chart';
         p.textContent = 'I canali di questi video nascondono il numero di iscritti.'; lista.append(p); return;
@@ -2187,7 +2261,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const riga = document.createElement('p');
       riga.className = 'big-line';
       const b = document.createElement('b'); b.textContent = nc.bene.length;
-      riga.append(nc.nuovi.length + ' canali su ' + nc.canali.length + ' sono nati negli ultimi 6 mesi. ', b,
+      riga.append(nc.nuovi.length + ' canali su ' + nc.canali.length + ' sono nati negli ultimi 3 mesi. ', b,
         nc.bene.length === 1 ? ' ha uno Short sopra la media della nicchia.' : ' hanno uno Short sopra la media della nicchia.');
       box.append(riga);
       if (!nc.nuovi.length) { box.append(paragrafo('Nessun canale nuovo tra quelli trovati: qui ci sono soprattutto canali già avviati.', 'muted')); return; }
@@ -2259,21 +2333,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (cs.righe.length > righe.length) box.append(paragrafo('Mostro i 10 canali con più Shorts su ' + cs.righe.length + '.', 'muted'));
     }
 
-    // ---------- 9: si sta saturando? ----------
-    function graficoSaturazione(boxN, boxV, nota, video) {
-      const sat = saturazione(video);
-      graficoTempo(boxN, sat.colonne.map((c) => ({
-        c, valore: c.shorts, righe: [c.nome], titolo: c.shorts + (c.shorts === 1 ? ' Short uscito' : ' Shorts usciti'),
-      })), { altezza: 170, etichette: nf.format });
-      graficoTempo(boxV, sat.colonne.map((c) => ({
-        c, valore: c.tipico,
-        righe: [c.nome, c.nMaturi ? 'valore tipico su ' + c.nMaturi + ' Shorts' : 'nessuno Short da contare'],
-        titolo: c.nMaturi ? compatto(c.tipico) + ' visualizzazioni per Short' : 'Nessun dato',
-      })), { altezza: 170, etichette: compatto });
-      nota.textContent = 'L\'ultima colonna è il mese in corso, quindi la mostro più chiara. Gli Shorts usciti negli ultimi 7 giorni non contano nelle visualizzazioni, perché stanno ancora crescendo.';
-    }
-
-    // ---------- 10: percentuale di "colpi" ----------
+    // ---------- 9: percentuale di "colpi" ----------
     function mostraColpi(box, video) {
       box.replaceChildren();
       const cp = colpi(video);
@@ -2296,7 +2356,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         : 'Meno di 1 Short su 10 supera le 100.000 visualizzazioni.', 'big-line'));
     }
 
-    // ---------- 11: durata migliore ----------
+    // ---------- 10: durata migliore ----------
     function graficoDurata(box, testoBox, video) {
       const d = durate(video);
       graficoTempo(box, d.fasce.map((x) => ({
@@ -2311,7 +2371,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       } else testoBox.append('Troppo pochi Shorts per dire quale durata funziona meglio.');
     }
 
-    // ---------- 12: formati di titolo che funzionano ----------
+    // ---------- 11: formati di titolo che funzionano ----------
     function mostraFormati(box, video) {
       box.replaceChildren();
       const ft = formatiTitolo(video, ricercaAttuale);
@@ -2344,7 +2404,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       box.append(ol);
     }
 
-    // ---------- 13: coinvolgimento ----------
+    // ---------- 12: coinvolgimento ----------
     function mostraCoinvolgimento(box, video) {
       box.replaceChildren();
       const co = coinvolgimento(video);
@@ -2620,7 +2680,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       graficoFasce($('chart-size'), videoAttuali);
       mostraTrend(videoAttuali);
       graficoCostanza($('consistency'), videoAttuali);
-      graficoSaturazione($('chart-sat-n'), $('chart-sat-v'), $('sat-note'), videoAttuali);
       graficoDurata($('chart-duration'), $('duration-text'), videoAttuali);
     }
     function mostraRisultati() {
@@ -2656,8 +2715,29 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       classifica($('rank'), videoAttuali);
       $('table-title').textContent = videoAttuali.length + ' Shorts trovati per "' + ricercaAttuale + '"';
       $('save-title').textContent = 'Risultati per "' + ricercaAttuale + '"';
+      mostraNumeriRicerca();
       tabella();
       faiComparire(document.querySelectorAll('#results .verdict, #results .thermo, #results #trend, #results .charts > .card, #results > div > .card:last-child'));
+    }
+
+    // Su quanti Shorts e canali è stata fatta la ricerca
+    function mostraNumeriRicerca() {
+      const box = $('run-stats');
+      box.replaceChildren();
+      const canali = new Set(videoAttuali.map((v) => v.canaleId)).size;
+      const tile = (valore, titolo, sotto) => {
+        const d = document.createElement('div');
+        const l = document.createElement('span'); l.className = 'label'; l.textContent = titolo;
+        const v = document.createElement('div'); v.className = 'v num'; contaNumero(v, valore);
+        d.append(l, v);
+        if (sotto) d.append(paragrafo(sotto));
+        box.append(d);
+      };
+      tile(videoAttuali.length, 'Shorts analizzati', 'con "rank" o "ranking" nel titolo, fino a 3 minuti');
+      tile(canali, 'Canali diversi', 'che hanno pubblicato questi Shorts');
+      if (infoRicerca.guardati) tile(infoRicerca.guardati, 'Shorts guardati su YouTube',
+        nf.format(Math.max(0, infoRicerca.guardati - videoAttuali.length)) + ' scartati: fuori tema, troppo lunghi o senza rank/ranking');
+      rendiMagici(box);
     }
 
     // ---------- Effetti in stile Magic UI ----------
@@ -2735,6 +2815,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         ricercaAttuale = termine;
         oraAnalisi = momento;
         livelloRicerca = livello;
+        infoRicerca = { guardati: ultimiGuardati };
+        statoSalvataggio('');
         ordine = 'views';
         messaggio('', '');
         salvaInArchivio(ricercaAttuale, video);
@@ -2804,7 +2886,6 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const dbPredefinito = () => ({ url: DB_URL_PREDEFINITO, chiave: DB_CHIAVE_PREDEFINITA });
     let dbConf = leggi(K_DB_CONF, null) || dbPredefinito();
     let dbSessione = leggi(K_DB_SESSIONE, null);
-    let dbTutte = false;
     let dbSalvataId = null;   // la ricerca mostrata è già nel database?
 
     function statoDb(testo, tipo) {
@@ -2866,7 +2947,14 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       $('db-setup').hidden = collegato;
       $('db-login').hidden = !collegato || !!dbSessione;
       $('db-on').hidden = !collegato || !dbSessione;
-      $('db-save').hidden = !dbSessione || $('db-auto').checked;
+      $('db-save').hidden = !dbSessione || $('db-auto').checked || !!dbSalvataId;
+      // riga nella pagina "Analizza": dice se le ricerche si salvano e porta allo storico
+      const riga = $('db-line');
+      riga.replaceChildren();
+      const link = document.createElement('a'); link.href = '#storico'; link.textContent = 'Le tue ricerche →';
+      if (dbSessione) riga.append('Database online: connesso come ' + (dbSessione.email || 'account') +
+        ($('db-auto').checked ? ', ogni ricerca si salva da sola. ' : '. '), link);
+      else riga.append('Vuoi ritrovare le ricerche da ogni computer? Entra con il tuo account in ', link);
       if (dbSessione) {
         $('db-who').textContent = 'Connesso: ' + (dbSessione.email || 'account');
         caricaStorico();
@@ -2889,94 +2977,186 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       }
       dbPulito = true;
     }
-    async function caricaStorico() {
-      try { await pulisciDb(); } catch (e) { /* riprovo la prossima volta */ }
-      const ul = $('db-list');
-      try {
-        const righe = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&order=creato.desc&limit=' + (dbTutte ? 1000 : 21), { method: 'GET' }, true);
-        ul.replaceChildren();
-        if (!righe.length) {
-          ul.append(paragrafo('Ancora nessuna ricerca salvata. Fai una ricerca con "Analizza": la salvo qui da sola.', 'muted'));
-        }
-        righe.slice(0, dbTutte ? righe.length : 20).forEach((r) => {
-          const li = document.createElement('li');
-          const info = document.createElement('div');
-          const t = document.createElement('div'); t.className = 't'; t.textContent = r.ricerca;
-          const m = document.createElement('div'); m.className = 'm';
-          const quando = new Date(r.creato);
-          const ri = r.riassunto || {};
-          m.append(quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
-            quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + ' · ' + (ri.shorts != null ? ri.shorts + ' Shorts' : ''));
-          if (ri.verdetto) { const pl = document.createElement('span'); pl.className = 'pill ' + (ri.cls || 'neutral'); pl.textContent = ri.verdetto; m.append(pl); }
-          const voti = [ri.finale != null ? 'Punteggio ' + ri.finale + '/100' : '',
-            ri.viral != null ? 'Viralità ' + ri.viral : '', ri.opp != null ? 'Opportunità ' + ri.opp : '', ri.rep != null ? 'Replicabilità ' + ri.rep : ''].filter(Boolean);
-          if (voti.length) m.append(voti.join(' · '));
-          info.append(t, m);
-          const b = document.createElement('div'); b.className = 'b';
-          const scaduta = !!(r.impostazioni && r.impostazioni.scaduta);
-          const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light';
-          if (scaduta) {
-            const ch = document.createElement('span'); ch.className = 'chip'; ch.textContent = 'Dettagli cancellati dopo 30 giorni'; m.append(ch);
-            apri.textContent = 'Rifai';
-            apri.title = 'Rifai la ricerca con dati aggiornati (usa crediti)';
-            apri.addEventListener('click', () => {
-              $('search-input').value = r.ricerca;
-              $('search-form').scrollIntoView({ behavior: pocoMovimento.matches ? 'auto' : 'smooth', block: 'start' });
-              $('search-input').focus();
-              statoDb('Ho scritto "' + r.ricerca + '" nella ricerca: premi Analizza per rifarla con dati aggiornati.', 'info');
-            });
-          } else {
-            apri.textContent = 'Apri';
-            apri.addEventListener('click', () => apriDaDb(r.id, apri));
-          }
-          const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-light'; del.textContent = 'Elimina';
-          let conferma = false;
-          del.addEventListener('click', async () => {
-            if (!conferma) { conferma = true; del.textContent = 'Sicuro?'; setTimeout(() => { conferma = false; del.textContent = 'Elimina'; }, 4000); return; }
-            try {
-              await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(r.id), { method: 'DELETE' }, true);
-              if (dbSalvataId === r.id) dbSalvataId = null;
-              caricaStorico();
-            } catch (e) { statoDb(e.message, 'error'); }
-          });
-          b.append(apri, del);
-          li.append(info, b);
-          ul.append(li);
-        });
-        $('db-more').hidden = dbTutte || righe.length <= 20;
-      } catch (e) {
-        ul.replaceChildren();
-        statoDb(e.message, 'error');
-      }
-    }
 
+    // ---------- Riassunto salvato per ogni ricerca (serve anche ai filtri dello storico) ----------
+    function riassuntoDaVideo(video) {
+      const piccoli = video.filter((v) => v.iscritti != null && v.iscritti < PICCOLO).map((v) => v.views);
+      const conta = new Map();
+      video.forEach((v) => { const c = conta.get(v.canaleId) || { nome: v.canale, n: 0 }; c.n++; conta.set(v.canaleId, c); });
+      const canali = [...conta.values()];
+      const piuAttivo = canali.reduce((a, c) => (!a || c.n > a.n ? c : a), null);
+      return {
+        shorts: video.length,
+        canali: canali.length,
+        piccolo: piccoli.length >= 5 ? { n: piccoli.length, basso: Math.round(percentile(piccoli, 0.25)),
+          tipico: Math.round(mediana(piccoli)), alto: Math.round(percentile(piccoli, 0.75)) } : null,
+        ripetuti: { tre: canali.filter((c) => c.n >= 3).length, due: canali.filter((c) => c.n >= 2).length,
+          max: piuAttivo ? piuAttivo.n : 0 },
+      };
+    }
     function riassuntoAttuale() {
       const viral = calcolaSegnali(videoAttuali, settimane(videoAttuali));
       const opp = calcolaOpportunita(videoAttuali);
       const rep = calcolaReplicabilita(videoAttuali);
       const vd = verdetto(viral.totale, opp.totale, rep.totale);
-      return { shorts: videoAttuali.length, viral: viral.totale, opp: opp.totale, rep: rep.totale,
-        finale: vd.finale, verdetto: vd.titolo, cls: vd.cls };
+      return Object.assign({ v: 2, viral: viral.totale, opp: opp.totale, rep: rep.totale,
+        finale: vd.finale, verdetto: vd.titolo, cls: vd.cls }, riassuntoDaVideo(videoAttuali));
     }
+
+    // ---------- Pagina "Le tue ricerche": elenco con filtri ----------
+    const K_FILTRI = 'radar-filtri-storico';
+    const FILTRI = ['f-nome', 'f-ordine', 'f-finale', 'f-viral', 'f-opp', 'f-rep', 'f-piccolo', 'f-ripetuti', 'f-shorts'];
+    let dbRighe = [];
+    let dbMostrate = 20;
+    async function caricaStorico() {
+      try { await pulisciDb(); } catch (e) { /* riprovo la prossima volta */ }
+      try {
+        dbRighe = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&order=creato.desc&limit=1000', { method: 'GET' }, true);
+        // le ricerche salvate prima di questa versione non hanno canali, canale piccolo e canali ripetuti: li calcolo dagli Shorts
+        const daCompletare = dbRighe.filter((r) => !(r.riassunto && r.riassunto.v >= 2) && !(r.impostazioni && r.impostazioni.scaduta)).slice(0, 50);
+        if (daCompletare.length) {
+          const conVideo = await chiamaDb('/rest/v1/ricerche?select=id,video&id=in.(' + daCompletare.map((r) => r.id).join(',') + ')', { method: 'GET' }, true);
+          conVideo.forEach((x) => {
+            const r = dbRighe.find((y) => y.id === x.id);
+            if (r && Array.isArray(x.video) && x.video.length) r.riassunto = Object.assign({}, r.riassunto || {}, riassuntoDaVideo(x.video));
+          });
+        }
+        disegnaStorico();
+      } catch (e) {
+        $('db-list').replaceChildren();
+        statoDb(e.message, 'error');
+      }
+    }
+    function valoreFiltro(id) { return $(id).value; }
+    function disegnaStorico() {
+      const ul = $('db-list');
+      ul.replaceChildren();
+      const nome = normalizzaTesto(valoreFiltro('f-nome'));
+      const minimo = (id) => +valoreFiltro(id) || 0;
+      const ri = (r) => r.riassunto || {};
+      const filtrate = dbRighe.filter((r) => {
+        const x = ri(r);
+        if (nome && !normalizzaTesto(r.ricerca).includes(nome)) return false;
+        if (minimo('f-finale') && !((x.finale || 0) >= minimo('f-finale'))) return false;
+        if (minimo('f-viral') && !((x.viral || 0) >= minimo('f-viral'))) return false;
+        if (minimo('f-opp') && !((x.opp || 0) >= minimo('f-opp'))) return false;
+        if (minimo('f-rep') && !((x.rep || 0) >= minimo('f-rep'))) return false;
+        if (minimo('f-piccolo') && !((x.piccolo && x.piccolo.tipico) >= minimo('f-piccolo'))) return false;
+        if (minimo('f-ripetuti') && !((x.ripetuti && x.ripetuti.tre) >= minimo('f-ripetuti'))) return false;
+        if (minimo('f-shorts') && !((x.shorts || 0) >= minimo('f-shorts'))) return false;
+        return true;
+      });
+      const chiaviOrdine = {
+        data: (r) => new Date(r.creato).getTime(), finale: (r) => ri(r).finale, viral: (r) => ri(r).viral, opp: (r) => ri(r).opp,
+        rep: (r) => ri(r).rep, piccolo: (r) => ri(r).piccolo && ri(r).piccolo.tipico, ripetuti: (r) => ri(r).ripetuti && ri(r).ripetuti.tre,
+        shorts: (r) => ri(r).shorts, canali: (r) => ri(r).canali,
+      };
+      const chiave = chiaviOrdine[valoreFiltro('f-ordine')] || chiaviOrdine.data;
+      filtrate.sort((a, b) => (chiave(b) == null ? -1 : chiave(b)) - (chiave(a) == null ? -1 : chiave(a)));
+
+      const filtriAttivi = FILTRI.some((id) => id !== 'f-ordine' && valoreFiltro(id) && valoreFiltro(id) !== '0');
+      $('f-conteggio').textContent = dbRighe.length
+        ? (filtriAttivi ? filtrate.length + ' ricerche su ' + dbRighe.length + ' rispettano i filtri.' : dbRighe.length + (dbRighe.length === 1 ? ' ricerca salvata.' : ' ricerche salvate.'))
+        : '';
+      $('db-filters').hidden = !dbRighe.length;
+      if (!dbRighe.length) ul.append(paragrafo('Ancora nessuna ricerca salvata. Fai una ricerca con "Analizza": la salvo qui da sola.', 'muted'));
+      else if (!filtrate.length) ul.append(paragrafo('Nessuna ricerca rispetta questi filtri. Prova ad allargarli o premi "Togli i filtri".', 'muted'));
+
+      filtrate.slice(0, dbMostrate).forEach((r) => {
+        const x = ri(r);
+        const li = document.createElement('li');
+        const info = document.createElement('div');
+        const t = document.createElement('div'); t.className = 't'; t.textContent = r.ricerca;
+        const m = document.createElement('div'); m.className = 'm';
+        const quando = new Date(r.creato);
+        m.append(quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
+          quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+        if (x.verdetto) { const pl = document.createElement('span'); pl.className = 'pill ' + (x.cls || 'neutral'); pl.textContent = x.verdetto; m.append(pl); }
+        const chips = document.createElement('div'); chips.className = 'chips';
+        const chip = (etichetta, valore, titolo) => {
+          const c = document.createElement('span'); c.className = 'chip';
+          if (titolo) c.title = titolo;
+          const b = document.createElement('b'); b.textContent = valore;
+          c.append(etichetta + ' ', b); chips.append(c);
+        };
+        if (x.finale != null) chip('Punteggio', x.finale + '/100');
+        if (x.viral != null) chip('Viralità', x.viral);
+        if (x.opp != null) chip('Opportunità', x.opp);
+        if (x.rep != null) chip('Replicabilità', x.rep);
+        if (x.piccolo) chip('Canale piccolo fa di solito', compatto(x.piccolo.tipico), 'Di solito tra ' + compatto(x.piccolo.basso) + ' e ' + compatto(x.piccolo.alto) + ' visualizzazioni (su ' + x.piccolo.n + ' Shorts di canali sotto 10.000 iscritti)');
+        if (x.ripetuti) chip('Canali che ci hanno provato 3+ volte', x.ripetuti.tre + (x.ripetuti.max ? ' · il più attivo ' + x.ripetuti.max + ' Shorts' : ''),
+          x.ripetuti.max ? 'Il canale più attivo ha fatto ' + x.ripetuti.max + ' Shorts su questo argomento. ' + x.ripetuti.due + ' canali ne hanno fatti almeno 2.' : '');
+        if (x.shorts != null) chip('Shorts trovati', nf.format(x.shorts));
+        if (x.canali != null) chip('Canali diversi', nf.format(x.canali));
+        info.append(t, m, chips);
+
+        const b = document.createElement('div'); b.className = 'b';
+        const scaduta = !!(r.impostazioni && r.impostazioni.scaduta);
+        const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light';
+        if (scaduta) {
+          const ch = document.createElement('span'); ch.className = 'chip'; ch.textContent = 'Dettagli cancellati dopo 30 giorni'; m.append(ch);
+          apri.textContent = 'Rifai';
+          apri.title = 'Rifai la ricerca con dati aggiornati (usa crediti)';
+          apri.addEventListener('click', () => {
+            vaiA('analizza');
+            $('search-input').value = r.ricerca;
+            $('search-input').focus();
+            messaggio('Ho scritto "' + r.ricerca + '" nella ricerca: premi Analizza per rifarla con dati aggiornati.', 'info');
+          });
+        } else {
+          apri.textContent = 'Apri';
+          apri.addEventListener('click', () => apriDaDb(r.id, apri));
+        }
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-light'; del.textContent = 'Elimina';
+        let conferma = false;
+        del.addEventListener('click', async () => {
+          if (!conferma) { conferma = true; del.textContent = 'Sicuro?'; setTimeout(() => { conferma = false; del.textContent = 'Elimina'; }, 4000); return; }
+          try {
+            await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(r.id), { method: 'DELETE' }, true);
+            if (dbSalvataId === r.id) dbSalvataId = null;
+            dbRighe = dbRighe.filter((y) => y.id !== r.id);
+            disegnaStorico();
+          } catch (e) { statoDb(e.message, 'error'); }
+        });
+        b.append(apri, del);
+        li.append(info, b);
+        ul.append(li);
+      });
+      const altre = filtrate.length - dbMostrate;
+      $('db-more').hidden = altre <= 0;
+      $('db-more').textContent = 'Mostra altre ' + Math.min(20, Math.max(0, altre));
+    }
+    function normalizzaTesto(t) { return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+    function salvaFiltri() {
+      const f = {}; FILTRI.forEach((id) => { f[id] = $(id).value; });
+      scrivi(K_FILTRI, f);
+    }
+    function leggiFiltri() {
+      const f = leggi(K_FILTRI, {}) || {};
+      FILTRI.forEach((id) => { if (f[id] != null && [...($(id).options || [{ value: f[id] }])].some((o) => o.value === f[id])) $(id).value = f[id]; });
+    }
+
+    // ---------- Salvataggio e apertura ----------
+    function statoSalvataggio(testo) { $('db-save-status').textContent = testo || ''; }
     async function salvaInDb() {
       if (!dbSessione || !videoAttuali.length) return;
-      statoDb('Salvo la ricerca nel database…');
+      statoSalvataggio('Salvo la ricerca nel database…');
       try {
         const r = await chiamaDb('/rest/v1/ricerche', {
           method: 'POST', headers: { Prefer: 'return=representation' },
           body: JSON.stringify({
             ricerca: ricercaAttuale,
-            impostazioni: { livello: livelloRicerca || livello, soloRank, momento: oraAnalisi },
+            impostazioni: { livello: livelloRicerca || livello, soloRank, momento: oraAnalisi, guardati: infoRicerca.guardati },
             riassunto: riassuntoAttuale(),
             video: videoAttuali,
           }),
         }, true);
         dbSalvataId = r && r[0] ? r[0].id : 'ok';
-        statoDb('Ricerca salvata nel database online ✓', 'info');
+        statoSalvataggio('Salvata nel database online ✓');
         $('db-save').hidden = true;
         caricaStorico();
       } catch (e) {
-        statoDb('Non sono riuscito a salvare la ricerca: ' + e.message, 'error');
+        statoSalvataggio('Non sono riuscito a salvarla nel database: ' + e.message);
       }
     }
     async function apriDaDb(id, bottone) {
@@ -2992,11 +3172,14 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         ricercaAttuale = r[0].ricerca;
         oraAnalisi = imp.momento || new Date(r[0].creato).getTime();
         livelloRicerca = LIVELLI[imp.livello] ? imp.livello : null;
+        infoRicerca = { guardati: imp.guardati || null };
         ordine = 'views';
         dbSalvataId = id;
+        statoDb('', '');
+        vaiA('analizza');
         mostraRisultati();
         $('db-save').hidden = true;
-        statoDb('', '');
+        statoSalvataggio('');
         messaggio('Ricerca del ' + new Date(r[0].creato).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) +
           ' aperta dal database: nessun credito usato. I numeri sono quelli di quel giorno.', 'info');
         $('results').scrollIntoView({ behavior: pocoMovimento.matches ? 'auto' : 'smooth', block: 'start' });
@@ -3054,10 +3237,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     $('db-auto').checked = leggi(K_DB_AUTO, true) !== false;
     $('db-auto').addEventListener('change', () => {
       scrivi(K_DB_AUTO, $('db-auto').checked);
-      $('db-save').hidden = !dbSessione || $('db-auto').checked || !!dbSalvataId;
+      mostraDb();
     });
     $('db-save').addEventListener('click', salvaInDb);
-    $('db-more').addEventListener('click', () => { dbTutte = true; caricaStorico(); });
+    $('db-more').addEventListener('click', () => { dbMostrate += 20; disegnaStorico(); });
     $('db-copy-sql2').addEventListener('click', async () => {
       const b = $('db-copy-sql2');
       try { await navigator.clipboard.writeText($('db-sql').textContent); b.textContent = 'Copiato ✓'; }
@@ -3075,8 +3258,34 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       setTimeout(() => { b.textContent = 'Copia il codice'; }, 2500);
     });
 
+    // ---------- Due pagine: "Analizza" e "Le tue ricerche" ----------
+    function mostraVista(v) {
+      document.body.dataset.vista = v;
+      document.querySelectorAll('.tabs a').forEach((a) => {
+        if (a.dataset.tab === v) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+      nascondiTip();
+      if (v === 'analizza' && videoAttuali.length) requestAnimationFrame(disegnaGrafici);   // i grafici nascosti vanno ridisegnati alla misura giusta
+    }
+    function vistaDaIndirizzo() { return location.hash === '#storico' ? 'storico' : 'analizza'; }
+    function vaiA(v) {
+      if (vistaDaIndirizzo() !== v) history.pushState(null, '', v === 'storico' ? '#storico' : '#analizza');
+      mostraVista(v);
+    }
+    window.addEventListener('hashchange', () => mostraVista(vistaDaIndirizzo()));
+    window.addEventListener('popstate', () => mostraVista(vistaDaIndirizzo()));
+
+    // filtri dello storico
+    FILTRI.forEach((id) => $(id).addEventListener(id === 'f-nome' ? 'input' : 'change', () => { dbMostrate = 20; salvaFiltri(); disegnaStorico(); }));
+    $('f-reset').addEventListener('click', () => {
+      FILTRI.forEach((id) => { $(id).value = id === 'f-ordine' ? 'data' : (id === 'f-nome' ? '' : '0'); });
+      dbMostrate = 20; salvaFiltri(); disegnaStorico();
+    });
+
     // ---------- Avvio ----------
     pulisciMemoriaLocale();
+    mostraVista(vistaDaIndirizzo());
+    leggiFiltri();
     rendiMagici();
     mostraDb();
     mostraChiave();
