@@ -331,6 +331,28 @@
     .db-list .chips .chip { font-size: .74rem; font-weight: 500; white-space: normal; }
     .db-list .chips .chip b { font-weight: 700; color: var(--ink); }
 
+    /* Storico come tabella */
+    #db, #db-on, #db-on > * { min-width: 0; }
+    #db-on { grid-template-columns: minmax(0, 1fr); }
+    body[data-vista="storico"] .wrap { max-width: 1320px; }
+    table.storico th button { white-space: normal; line-height: 1.25; }
+    .storico-lista { justify-self: stretch; display: grid; gap: 4px; }
+    .table-box.storico-box { margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    table.storico { min-width: 980px; font-size: .85rem; }
+    table.storico th { font-size: .74rem; letter-spacing: .02em; white-space: normal; vertical-align: bottom; line-height: 1.25; min-width: 70px; background: var(--surface); }
+    table.storico th button { text-align: inherit; }
+    table.storico td { padding: 9px 10px; white-space: nowrap; }
+    table.storico tbody tr:hover td { background: color-mix(in srgb, var(--g1) 5%, var(--surface)); }
+    table.storico .fisso { position: sticky; left: 0; z-index: 1; background: var(--surface); min-width: 170px; max-width: 240px; white-space: normal; box-shadow: 1px 0 0 var(--line); }
+    table.storico th:first-child { position: sticky; left: 0; z-index: 2; box-shadow: 1px 0 0 var(--line); }
+    table.storico .nome b { display: block; overflow-wrap: anywhere; }
+    table.storico .nome small { color: var(--muted); font-size: .75rem; }
+    table.storico .azioni { display: flex; gap: 6px; justify-content: flex-end; }
+    table.storico .azioni button { padding: 6px 11px; font-size: .8rem; }
+    table.storico .pill { white-space: nowrap; }
+    .storico-lista > p.muted { margin: 0; }
+    .legenda { font-size: .8rem; padding-top: 6px; }
+
     /* Quanto ha guardato la ricerca */
     .run-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
     .run-stats > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; display: grid; gap: 2px; box-shadow: var(--shadow); }
@@ -751,7 +773,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
               <option value="opp">Opportunità</option>
               <option value="rep">Replicabilità</option>
               <option value="piccolo">Canale piccolo (valore tipico)</option>
-              <option value="ripetuti">Canali che ci hanno provato più volte</option>
+              <option value="ripetuti">Canali con 3+ Shorts</option>
+              <option value="attivo">Il canale più attivo</option>
               <option value="shorts">Shorts trovati</option>
               <option value="canali">Canali diversi</option>
             </select></label>
@@ -765,14 +788,14 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             <select id="f-rep"><option value="0">Tutti</option><option value="30">30 o più</option><option value="50">50 o più</option><option value="70">70 o più</option></select></label>
           <label class="field"><span class="label">Un canale piccolo fa di solito</span>
             <select id="f-piccolo"><option value="0">Tutti</option><option value="1000">almeno 1k</option><option value="5000">almeno 5k</option><option value="10000">almeno 10k</option><option value="50000">almeno 50k</option><option value="100000">almeno 100k</option></select></label>
-          <label class="field"><span class="label">Canali che ci hanno provato 3+ volte</span>
+          <label class="field"><span class="label">Canali con 3+ Shorts</span>
             <select id="f-ripetuti"><option value="0">Tutti</option><option value="1">almeno 1</option><option value="3">almeno 3</option><option value="5">almeno 5</option><option value="10">almeno 10</option></select></label>
           <label class="field"><span class="label">Shorts trovati</span>
             <select id="f-shorts"><option value="0">Tutti</option><option value="50">almeno 50</option><option value="100">almeno 100</option><option value="200">almeno 200</option></select></label>
           <button class="btn-link" id="f-reset" type="button">Togli i filtri</button>
         </div>
         <p class="muted" id="f-conteggio" style="font-size:.85rem"></p>
-        <ul class="db-list" id="db-list"></ul>
+        <div class="storico-lista" id="db-list"></div>
         <button class="btn-light" id="db-more" type="button" hidden>Mostra altre</button>
       </div>
 
@@ -2496,7 +2519,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         celle.forEach(([t, c]) => { const td = document.createElement('td'); td.className = c; td.textContent = t; tr.append(td); });
         tb.append(tr);
       });
-      document.querySelectorAll('th button').forEach((b) => {
+      document.querySelectorAll('#results th button').forEach((b) => {
         if (b.dataset.sort === ordine) b.setAttribute('aria-sort', 'descending'); else b.removeAttribute('aria-sort');
       });
     }
@@ -2832,7 +2855,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     });
 
 
-    document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('#results th button').forEach((b) => b.addEventListener('click', () => {
       ordine = b.dataset.sort;
       tabella();
     }));
@@ -3049,7 +3072,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const chiaviOrdine = {
         data: (r) => new Date(r.creato).getTime(), finale: (r) => ri(r).finale, viral: (r) => ri(r).viral, opp: (r) => ri(r).opp,
         rep: (r) => ri(r).rep, piccolo: (r) => ri(r).piccolo && ri(r).piccolo.tipico, ripetuti: (r) => ri(r).ripetuti && ri(r).ripetuti.tre,
-        shorts: (r) => ri(r).shorts, canali: (r) => ri(r).canali,
+        shorts: (r) => ri(r).shorts, canali: (r) => ri(r).canali, attivo: (r) => ri(r).ripetuti && ri(r).ripetuti.max,
       };
       const chiave = chiaviOrdine[valoreFiltro('f-ordine')] || chiaviOrdine.data;
       filtrate.sort((a, b) => (chiave(b) == null ? -1 : chiave(b)) - (chiave(a) == null ? -1 : chiave(a)));
@@ -3062,39 +3085,75 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (!dbRighe.length) ul.append(paragrafo('Ancora nessuna ricerca salvata. Fai una ricerca con "Analizza": la salvo qui da sola.', 'muted'));
       else if (!filtrate.length) ul.append(paragrafo('Nessuna ricerca rispetta questi filtri. Prova ad allargarli o premi "Togli i filtri".', 'muted'));
 
+      if (!filtrate.length) return finePagina(filtrate);
+
+      // Tabella come in Excel: una riga per ricerca, una colonna per dato. Premi un titolo per ordinare.
+      const COLONNE = [
+        ['Ricerca', 'data', 'Nome della ricerca e quando l\'hai fatta'],
+        ['Risultato', null, ''],
+        ['Punteggio', 'finale', 'Punteggio finale "Vale la pena?" da 0 a 100'],
+        ['Viralità', 'viral', 'Da 0 a 100: quanto l\'argomento sta crescendo adesso'],
+        ['Opportunità', 'opp', 'Da 0 a 100: quanto spazio c\'è per i canali piccoli'],
+        ['Replicabilità', 'rep', 'Da 0 a 100: quanto il successo si ripete'],
+        ['Canale piccolo fa di solito', 'piccolo', 'Visualizzazioni che fa di solito uno Short di un canale sotto 10.000 iscritti (come nel grafico 4)'],
+        ['Shorts trovati', 'shorts', 'Quanti Shorts ho trovato su questo argomento'],
+        ['Canali diversi', 'canali', 'Quanti canali diversi hanno pubblicato questi Shorts'],
+        ['Canali con 3+ Shorts', 'ripetuti', 'Quanti canali hanno pubblicato almeno 3 Shorts su questo argomento (cioè ci hanno provato più volte)'],
+        ['Il più attivo ne ha fatti', 'attivo', 'Quanti Shorts su questo argomento ha pubblicato il canale che ne ha fatti di più'],
+        ['', null, ''],
+      ];
+      const ordineAttivo = valoreFiltro('f-ordine') || 'data';
+      const tabella = document.createElement('table'); tabella.className = 'storico';
+      const thead = document.createElement('thead'); const trh = document.createElement('tr');
+      COLONNE.forEach(([testo, ord, aiuto], i) => {
+        const th = document.createElement('th'); if (i > 1 && i < COLONNE.length - 1) th.className = 'r';
+        if (aiuto) th.title = aiuto;
+        if (ord) {
+          const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = testo;
+          if (ord === ordineAttivo) bt.setAttribute('aria-sort', 'descending');
+          bt.addEventListener('click', () => { $('f-ordine').value = ord; dbMostrate = 20; salvaFiltri(); disegnaStorico(); });
+          th.append(bt);
+        } else th.textContent = testo;
+        trh.append(th);
+      });
+      thead.append(trh); tabella.append(thead);
+      const tbody = document.createElement('tbody');
+      const cella = (tr, contenuto, cls, titolo) => {
+        const td = document.createElement('td'); if (cls) td.className = cls; if (titolo) td.title = titolo;
+        if (contenuto == null || contenuto === '') td.append('–'); else td.append(contenuto);
+        tr.append(td); return td;
+      };
       filtrate.slice(0, dbMostrate).forEach((r) => {
         const x = ri(r);
-        const li = document.createElement('li');
-        const info = document.createElement('div');
-        const t = document.createElement('div'); t.className = 't'; t.textContent = r.ricerca;
-        const m = document.createElement('div'); m.className = 'm';
-        const quando = new Date(r.creato);
-        m.append(quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
-          quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
-        if (x.verdetto) { const pl = document.createElement('span'); pl.className = 'pill ' + (x.cls || 'neutral'); pl.textContent = x.verdetto; m.append(pl); }
-        const chips = document.createElement('div'); chips.className = 'chips';
-        const chip = (etichetta, valore, titolo) => {
-          const c = document.createElement('span'); c.className = 'chip';
-          if (titolo) c.title = titolo;
-          const b = document.createElement('b'); b.textContent = valore;
-          c.append(etichetta + ' ', b); chips.append(c);
-        };
-        if (x.finale != null) chip('Punteggio', x.finale + '/100');
-        if (x.viral != null) chip('Viralità', x.viral);
-        if (x.opp != null) chip('Opportunità', x.opp);
-        if (x.rep != null) chip('Replicabilità', x.rep);
-        if (x.piccolo) chip('Canale piccolo fa di solito', compatto(x.piccolo.tipico), 'Di solito tra ' + compatto(x.piccolo.basso) + ' e ' + compatto(x.piccolo.alto) + ' visualizzazioni (su ' + x.piccolo.n + ' Shorts di canali sotto 10.000 iscritti)');
-        if (x.ripetuti) chip('Canali che ci hanno provato 3+ volte', x.ripetuti.tre + (x.ripetuti.max ? ' · il più attivo ' + x.ripetuti.max + ' Shorts' : ''),
-          x.ripetuti.max ? 'Il canale più attivo ha fatto ' + x.ripetuti.max + ' Shorts su questo argomento. ' + x.ripetuti.due + ' canali ne hanno fatti almeno 2.' : '');
-        if (x.shorts != null) chip('Shorts trovati', nf.format(x.shorts));
-        if (x.canali != null) chip('Canali diversi', nf.format(x.canali));
-        info.append(t, m, chips);
-
-        const b = document.createElement('div'); b.className = 'b';
+        const tr = document.createElement('tr');
         const scaduta = !!(r.impostazioni && r.impostazioni.scaduta);
+        const nomeBox = document.createElement('div'); nomeBox.className = 'nome';
+        const t = document.createElement('b'); t.textContent = r.ricerca;
+        const quando = new Date(r.creato);
+        const sm = document.createElement('small');
+        sm.textContent = quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
+          quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + (scaduta ? ' · dettagli cancellati dopo 30 giorni' : '');
+        nomeBox.append(t, sm);
+        cella(tr, nomeBox, 'fisso');
+        let pl = null;
+        if (x.verdetto) { pl = document.createElement('span'); pl.className = 'pill ' + (x.cls || 'neutral'); pl.textContent = x.verdetto; }
+        cella(tr, pl);
+        const forte = (n) => { if (n == null) return null; const bb = document.createElement('b'); bb.textContent = n; return bb; };
+        cella(tr, forte(x.finale), 'r num');
+        cella(tr, x.viral != null ? String(x.viral) : null, 'r num');
+        cella(tr, x.opp != null ? String(x.opp) : null, 'r num');
+        cella(tr, x.rep != null ? String(x.rep) : null, 'r num');
+        cella(tr, x.piccolo ? compatto(x.piccolo.basso) + ' – ' + compatto(x.piccolo.alto) : null, 'r num',
+          x.piccolo ? 'Di solito tra ' + compatto(x.piccolo.basso) + ' e ' + compatto(x.piccolo.alto) + ' visualizzazioni (su ' + x.piccolo.n + ' Shorts di canali sotto 10.000 iscritti)' : '');
+        cella(tr, x.shorts != null ? nf.format(x.shorts) : null, 'r num');
+        cella(tr, x.canali != null ? nf.format(x.canali) : null, 'r num');
+        cella(tr, x.ripetuti ? nf.format(x.ripetuti.tre) + (x.canali ? ' su ' + nf.format(x.canali) : '') : null, 'r num',
+          x.ripetuti ? x.ripetuti.tre + ' canali hanno pubblicato almeno 3 Shorts su questo argomento; ' + x.ripetuti.due + ' almeno 2.' : '');
+        cella(tr, x.ripetuti && x.ripetuti.max ? x.ripetuti.max + ' Shorts' : null, 'r num');
+
+        const bx = document.createElement('div'); bx.className = 'azioni';
         const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light';
         if (scaduta) {
-          const ch = document.createElement('span'); ch.className = 'chip'; ch.textContent = 'Dettagli cancellati dopo 30 giorni'; m.append(ch);
           apri.textContent = 'Rifai';
           apri.title = 'Rifai la ricerca con dati aggiornati (usa crediti)';
           apri.addEventListener('click', () => {
@@ -3118,10 +3177,19 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             disegnaStorico();
           } catch (e) { statoDb(e.message, 'error'); }
         });
-        b.append(apri, del);
-        li.append(info, b);
-        ul.append(li);
+        bx.append(apri, del);
+        cella(tr, bx);
+        tbody.append(tr);
       });
+      tabella.append(tbody);
+      const scorri = document.createElement('div'); scorri.className = 'table-box storico-box';
+      scorri.append(tabella);
+      ul.append(scorri);
+      ul.append(paragrafo('"Canali con 3+ Shorts" = quanti canali hanno pubblicato almeno 3 Shorts sullo stesso argomento, cioè ci hanno provato più volte. ' +
+        '"Il più attivo ne ha fatti" = quanti Shorts ha fatto il canale che ci ha provato di più. Premi il titolo di una colonna per ordinare.', 'muted legenda'));
+      finePagina(filtrate);
+    }
+    function finePagina(filtrate) {
       const altre = filtrate.length - dbMostrate;
       $('db-more').hidden = altre <= 0;
       $('db-more').textContent = 'Mostra altre ' + Math.min(20, Math.max(0, altre));
