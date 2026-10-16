@@ -373,6 +373,21 @@
     @media (max-width: 760px) { .c-extra { grid-template-columns: minmax(0, 1fr); } }
 
 
+    /* Preferite */
+    .preferite { display: grid; gap: 8px; padding: 14px; border-radius: 12px; min-width: 0; justify-self: stretch;
+      border: 1px solid color-mix(in srgb, #f5b301 45%, var(--line)); background: color-mix(in srgb, #f5b301 7%, var(--surface)); }
+    .preferite[hidden] { display: none; }
+    .preferite .label { color: #b77900; }
+    .preferite > * { min-width: 0; }
+    .con-stella { display: flex; gap: 6px; align-items: flex-start; }
+    .stella { background: none; padding: 0 2px; font-size: 1.15rem; line-height: 1.2; color: var(--muted); border-radius: 6px; flex-shrink: 0; }
+    .stella[aria-pressed="true"] { color: #f5b301; }
+    .stella:hover { color: #f5b301; }
+    /* Gruppi di canali */
+    .gruppo-riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .gruppo-riga select { min-width: 200px; }
+    .gruppo-riga input { flex: 1 1 220px; }
+    table.c-salvati { min-width: 960px; }
     /* Elenco di tutti i virali */
     .filtri-colonne th { padding: 6px 6px 10px; vertical-align: top; }
     .filtri-colonne input, .filtri-colonne select { width: 100%; min-width: 92px; font-size: .8rem; padding: 7px 8px; border-radius: 8px; flex: none; }
@@ -803,6 +818,13 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           <label class="check"><input type="checkbox" id="db-auto" checked> Salva automaticamente ogni ricerca</label>
           <button class="btn-link" id="db-logout" type="button">Esci</button>
         </div>
+        <section class="preferite" id="db-preferite" hidden>
+          <div class="pref-head">
+            <span class="label">★ Preferite</span>
+            <p class="muted" id="db-pref-sub">Le ricerche che hai segnato con la stella. Le vedi sempre qui in cima, anche con i filtri.</p>
+          </div>
+          <div id="db-pref-lista"></div>
+        </section>
         <div class="filters" id="db-filters">
           <label class="field grow"><span class="label">Cerca per nome</span>
             <input id="f-nome" type="search" placeholder="Es. pizza" autocomplete="off"></label>
@@ -854,6 +876,22 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         <div class="step">
           <span class="step-n">1</span>
           <div class="step-body">
+            <label class="step-title" for="c-gruppo">In quale gruppo li metto?</label>
+            <p class="step-hint">Ogni gruppo ha il suo elenco di canali e di video virali. Per una nuova lista di canali crea un nuovo gruppo.</p>
+            <div class="gruppo-riga">
+              <select id="c-gruppo" aria-label="Gruppo"></select>
+              <button id="c-nuovo-gruppo" class="btn-light" type="button">+ Nuovo gruppo</button>
+            </div>
+            <div class="gruppo-riga" id="c-nuovo-box" hidden>
+              <input id="c-nuovo-nome" type="text" placeholder="Nome del nuovo gruppo (es. Canali cucina)" maxlength="40" autocomplete="off">
+              <button id="c-crea-gruppo" type="button">Crea</button>
+              <button id="c-annulla-gruppo" class="btn-link" type="button">Annulla</button>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <span class="step-n">2</span>
+          <div class="step-body">
             <label class="step-title" for="c-input">Link dei canali o degli Shorts</label>
             <p class="step-hint">Puoi incollarne anche tanti insieme (fino a 100): <b>uno per riga</b>. Va bene per esempio youtube.com/@nomecanale, youtube.com/shorts/… oppure solo @nomecanale.</p>
             <textarea id="c-input" rows="3" placeholder="https://www.youtube.com/@primocanale&#10;https://www.youtube.com/@secondocanale" required autocomplete="off" spellcheck="false"></textarea>
@@ -861,7 +899,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           </div>
         </div>
         <div class="step">
-          <span class="step-n">2</span>
+          <span class="step-n">3</span>
           <div class="step-body">
             <span class="step-title">Quanti Shorts guardare?</span>
             <p class="step-hint">Parto dai più recenti. Costa pochissimo: molto meno di una ricerca di nicchia.</p>
@@ -956,18 +994,52 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       <section class="card" id="c-storico">
         <div class="card-head">
           <span class="label">Salvati</span>
-          <h2>Canali analizzati</h2>
+          <h2 id="c-storico-titolo">Canali analizzati</h2>
           <p id="c-storico-sub"></p>
         </div>
         <div><button id="c-tutti-btn" class="shimmer" type="button" hidden>Elenco di tutti i video virali dei canali</button></div>
-        <div class="storico-lista" id="c-lista"></div>
+        <div class="gruppo-riga">
+          <label class="muted" for="c-gruppo-vista">Gruppo</label>
+          <select id="c-gruppo-vista" aria-label="Gruppo da mostrare"></select>
+          <button id="cs-reset" class="btn-link" type="button">Togli i filtri</button>
+        </div>
+        <p class="muted" id="cs-conta" style="font-size:.85rem"></p>
+        <div class="storico-lista" id="c-lista">
+          <div class="table-box storico-box">
+            <table class="storico c-salvati">
+              <thead>
+                <tr>
+                  <th><button type="button" data-sord="nome">Canale</button></th>
+                  <th class="r"><button type="button" data-sord="iscritti">Iscritti</button></th>
+                  <th class="r"><button type="button" data-sord="shorts">Shorts analizzati</button></th>
+                  <th class="r"><button type="button" data-sord="normale">Di solito fa</button></th>
+                  <th class="r"><button type="button" data-sord="virali">Shorts virali</button></th>
+                  <th class="r"><button type="button" data-sord="top">Il più visto</button></th>
+                  <th class="r"><button type="button" data-sord="data">Analizzato</button></th>
+                  <th></th>
+                </tr>
+                <tr class="filtri-colonne">
+                  <th><input id="cs-nome" type="search" placeholder="Cerca canale" aria-label="Cerca canale" autocomplete="off"></th>
+                  <th><select id="cs-iscritti" aria-label="Iscritti"><option value="">Tutti</option><option value="0-10000">Sotto 10k</option><option value="10000-100000">10k – 100k</option><option value="100000-1000000">100k – 1 Mln</option><option value="1000000-1e12">Oltre 1 Mln</option></select></th>
+                  <th><select id="cs-shorts" aria-label="Shorts analizzati minimi"><option value="0">Tutti</option><option value="50">50 o più</option><option value="100">100 o più</option><option value="200">200 o più</option><option value="500">500 o più</option></select></th>
+                  <th><select id="cs-normale" aria-label="Di solito fa almeno"><option value="0">Tutti</option><option value="1000">1k o più</option><option value="10000">10k o più</option><option value="100000">100k o più</option><option value="1000000">1 Mln o più</option></select></th>
+                  <th><select id="cs-virali" aria-label="Shorts virali minimi"><option value="0">Tutti</option><option value="1">almeno 1</option><option value="5">almeno 5</option><option value="10">almeno 10</option><option value="25">almeno 25</option></select></th>
+                  <th><select id="cs-top" aria-label="Il più visto almeno"><option value="0">Tutti</option><option value="100000">100k o più</option><option value="1000000">1 Mln o più</option><option value="10000000">10 Mln o più</option></select></th>
+                  <th><select id="cs-data" aria-label="Analizzato"><option value="0">Sempre</option><option value="1">Oggi</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option></select></th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="c-lista-body"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section class="card" id="c-tutti" hidden>
         <div class="table-head">
           <div class="card-head">
             <span class="label">Tutti i canali</span>
-            <h2>Tutti i video virali dei canali analizzati</h2>
+            <h2 id="c-tutti-titolo">Tutti i video virali dei canali analizzati</h2>
             <p id="c-tutti-sub"></p>
           </div>
           <div class="actions">
@@ -3245,7 +3317,11 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       try {
         const tutte = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&order=creato.desc&limit=1000', { method: 'GET' }, true);
         const diCanale = (r) => r.impostazioni && r.impostazioni.tipo === 'canale';
-        dbRighe = tutte.filter((r) => !diCanale(r));
+        const diPreferiti = (r) => r.impostazioni && r.impostazioni.tipo === 'preferiti';
+        const pref = tutte.filter(diPreferiti).sort((a, b) => new Date(b.creato) - new Date(a.creato));
+        prefIds = pref.map((r) => r.id);
+        preferite = new Set(pref[0] && pref[0].riassunto && Array.isArray(pref[0].riassunto.chiavi) ? pref[0].riassunto.chiavi : []);
+        dbRighe = tutte.filter((r) => !diCanale(r) && !diPreferiti(r));
         canaliDb = tutte.filter(diCanale);
         disegnaCanali();
         // le ricerche salvate prima di questa versione non hanno canali, canale piccolo e canali ripetuti: li calcolo dagli Shorts
@@ -3298,8 +3374,43 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (!dbRighe.length) ul.append(paragrafo('Ancora nessuna ricerca salvata. Fai una ricerca con "Analizza": la salvo qui da sola.', 'muted'));
       else if (!filtrate.length) ul.append(paragrafo('Nessuna ricerca rispetta questi filtri. Prova ad allargarli o premi "Togli i filtri".', 'muted'));
 
-      if (!filtrate.length) return finePagina(filtrate);
+      // le preferite: sempre in cima, fuori dall'elenco e dai filtri
+      const pref = dbRighe.filter(ePreferita).sort((a, b) => new Date(b.creato) - new Date(a.creato));
+      $('db-preferite').hidden = !dbRighe.length;
+      $('db-pref-lista').replaceChildren(pref.length ? tabellaStorico(pref, false)
+        : paragrafo('Nessuna preferita. Premi la stella ☆ accanto a una ricerca per metterla qui.', 'muted'));
 
+      if (!filtrate.length) return finePagina(filtrate);
+      ul.append(tabellaStorico(filtrate.slice(0, dbMostrate), true));
+      ul.append(paragrafo('"Canali con 3+ Shorts" = quanti canali hanno pubblicato almeno 3 Shorts sullo stesso argomento, cioè ci hanno provato più volte. ' +
+        '"Il più attivo ne ha fatti" = quanti Shorts ha fatto il canale che ci ha provato di più. Premi il titolo di una colonna per ordinare. Premi ☆ per metterla tra le preferite.', 'muted legenda'));
+      finePagina(filtrate);
+    }
+
+    // ----- Preferite: salvate nel database come una piccola riga a parte -----
+    let preferite = new Set();
+    let prefIds = [];
+    const chiavePref = (r) => new Date(r.creato).getTime() + '|' + r.ricerca;   // resta uguale anche dopo la pulizia dei 30 giorni
+    const ePreferita = (r) => preferite.has(chiavePref(r));
+    async function cambiaPreferita(r) {
+      const k = chiavePref(r);
+      const prima = new Set(preferite);
+      if (preferite.has(k)) preferite.delete(k); else preferite.add(k);
+      disegnaStorico();
+      try {
+        // il database permette solo di aggiungere e cancellare: salvo la lista nuova e cancello la vecchia
+        const nuova = await chiamaDb('/rest/v1/ricerche', { method: 'POST', headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({ ricerca: 'Preferite', impostazioni: { tipo: 'preferiti' }, riassunto: { chiavi: [...preferite] }, video: [] }) }, true);
+        for (const id of prefIds) await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(id), { method: 'DELETE' }, true);
+        prefIds = nuova && nuova[0] ? [nuova[0].id] : [];
+      } catch (e) {
+        preferite = prima; disegnaStorico();
+        statoDb('Non sono riuscito a salvare la preferita: ' + e.message, 'error');
+      }
+    }
+
+    function tabellaStorico(righe, conOrdine) {
+      const ri = (r) => r.riassunto || {};
       // Tabella come in Excel: una riga per ricerca, una colonna per dato. Premi un titolo per ordinare.
       const COLONNE = [
         ['Ricerca', 'data', 'Nome della ricerca e quando l\'hai fatta'],
@@ -3321,7 +3432,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       COLONNE.forEach(([testo, ord, aiuto], i) => {
         const th = document.createElement('th'); if (i > 1 && i < COLONNE.length - 1) th.className = 'r';
         if (aiuto) th.title = aiuto;
-        if (ord) {
+        if (ord && conOrdine) {
           const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = testo;
           if (ord === ordineAttivo) bt.setAttribute('aria-sort', 'descending');
           bt.addEventListener('click', () => { $('f-ordine').value = ord; dbMostrate = 20; salvaFiltri(); disegnaStorico(); });
@@ -3336,7 +3447,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         if (contenuto == null || contenuto === '') td.append('–'); else td.append(contenuto);
         tr.append(td); return td;
       };
-      filtrate.slice(0, dbMostrate).forEach((r) => {
+      righe.forEach((r) => {
         const x = ri(r);
         const tr = document.createElement('tr');
         const scaduta = !!(r.impostazioni && r.impostazioni.scaduta);
@@ -3347,7 +3458,15 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         sm.textContent = quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
           quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + (scaduta ? ' · dettagli cancellati dopo 30 giorni' : '');
         nomeBox.append(t, sm);
-        cella(tr, nomeBox, 'fisso');
+        const stella = document.createElement('button'); stella.type = 'button'; stella.className = 'stella';
+        const pref = ePreferita(r);
+        stella.textContent = pref ? '★' : '☆';
+        stella.setAttribute('aria-pressed', String(pref));
+        stella.title = pref ? 'Togli dalle preferite' : 'Metti tra le preferite (la vedi sempre in cima)';
+        stella.setAttribute('aria-label', stella.title);
+        stella.addEventListener('click', () => cambiaPreferita(r));
+        const conStella = document.createElement('div'); conStella.className = 'con-stella'; conStella.append(stella, nomeBox);
+        cella(tr, conStella, 'fisso');
         let pl = null;
         if (x.verdetto) { pl = document.createElement('span'); pl.className = 'pill ' + (x.cls || 'neutral'); pl.textContent = x.verdetto; }
         cella(tr, pl);
@@ -3397,10 +3516,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       tabella.append(tbody);
       const scorri = document.createElement('div'); scorri.className = 'table-box storico-box';
       scorri.append(tabella);
-      ul.append(scorri);
-      ul.append(paragrafo('"Canali con 3+ Shorts" = quanti canali hanno pubblicato almeno 3 Shorts sullo stesso argomento, cioè ci hanno provato più volte. ' +
-        '"Il più attivo ne ha fatti" = quanti Shorts ha fatto il canale che ci ha provato di più. Premi il titolo di una colonna per ordinare.', 'muted legenda'));
-      finePagina(filtrate);
+      return scorri;
     }
     function finePagina(filtrate) {
       const altre = filtrate.length - dbMostrate;
@@ -3828,7 +3944,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       return {
         id: 'loc' + Date.now().toString(36), creato: new Date(cAttuale.momento).toISOString(), ricerca: cAttuale.testo,
         impostazioni: { tipo: 'canale', momento: cAttuale.momento, canaleId: cAttuale.canale.id, canaleNome: cAttuale.canale.nome,
-          incollato: cAttuale.incollato, guardati: cAttuale.guardati, quanti: +cLivello },
+          incollato: cAttuale.incollato, guardati: cAttuale.guardati, quanti: +cLivello, gruppo: cGruppo },
         riassunto: riassuntoCanale(cAttuale.video, cAttuale.normale),
         video: cAttuale.video.map((v) => { const x = Object.assign({}, v); delete x.volte; delete x.virale; return x; }),
       };
@@ -3853,47 +3969,147 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       disegnaCanali();
     }
 
+    // ----- Gruppi di canali -----
+    const K_GRUPPI = 'radar-gruppi-canali';
+    const K_GRUPPO = 'radar-gruppo-canale';
+    const GRUPPO_BASE = 'Primo gruppo';
+    const TUTTI_GRUPPI = '*';
+    let cGruppo = String(leggi(K_GRUPPO, GRUPPO_BASE) || GRUPPO_BASE);
+    let cGruppoVista = cGruppo;          // quale gruppo mostro in "Canali analizzati" ("*" = tutti)
+    const gruppoDi = (r) => (r.impostazioni && r.impostazioni.gruppo) || GRUPPO_BASE;
+    const righeCanali = () => (dbSessione ? canaliDb : canaliLocali());
+    function elencoGruppi() {
+      const nomi = [GRUPPO_BASE, ...(leggi(K_GRUPPI, []) || []), ...righeCanali().map(gruppoDi), cGruppo];
+      return [...new Set(nomi.filter((n) => typeof n === 'string' && n.trim()))];
+    }
+    function disegnaGruppi() {
+      const gruppi = elencoGruppi();
+      const conta = (g) => righeCanali().filter((r) => gruppoDi(r) === g).length;
+      const sel = $('c-gruppo');
+      sel.replaceChildren(...gruppi.map((g) => new Option(g + ' (' + conta(g) + ')', g)));
+      sel.value = cGruppo;
+      const vis = $('c-gruppo-vista');
+      vis.replaceChildren(...gruppi.map((g) => new Option(g + ' (' + conta(g) + ')', g)), new Option('Tutti i gruppi (' + righeCanali().length + ')', TUTTI_GRUPPI));
+      vis.value = cGruppoVista;
+      if (vis.value !== cGruppoVista) { cGruppoVista = cGruppo; vis.value = cGruppo; }
+    }
+    function scegliGruppo(g) {
+      cGruppo = g; cGruppoVista = g;
+      scrivi(K_GRUPPO, g);
+      tChiudi();
+      disegnaCanali();
+    }
+    function creaGruppo() {
+      const nome = $('c-nuovo-nome').value.trim().replace(/\s+/g, ' ');
+      if (!nome) { $('c-nuovo-nome').focus(); return; }
+      if (nome === TUTTI_GRUPPI) return;
+      const gruppi = (leggi(K_GRUPPI, []) || []).filter((g) => g !== nome);
+      scrivi(K_GRUPPI, [...gruppi, nome]);
+      $('c-nuovo-box').hidden = true; $('c-nuovo-nome').value = '';
+      scegliGruppo(nome);
+      $('c-input').value = ''; contaLink();
+      cMessaggio('Gruppo "' + nome + '" creato: ora incolla i link dei canali da mettere qui dentro.', 'info');
+      $('c-input').focus();
+    }
+    $('c-gruppo').addEventListener('change', () => scegliGruppo($('c-gruppo').value));
+    $('c-gruppo-vista').addEventListener('change', () => {
+      const v = $('c-gruppo-vista').value;
+      if (v === TUTTI_GRUPPI) { cGruppoVista = v; tChiudi(); disegnaCanali(); } else scegliGruppo(v);
+    });
+    $('c-nuovo-gruppo').addEventListener('click', () => { $('c-nuovo-box').hidden = false; $('c-nuovo-nome').focus(); });
+    $('c-annulla-gruppo').addEventListener('click', () => { $('c-nuovo-box').hidden = true; $('c-nuovo-nome').value = ''; });
+    $('c-crea-gruppo').addEventListener('click', creaGruppo);
+    $('c-nuovo-nome').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); creaGruppo(); } });
+
+    // ----- "Canali analizzati": tabella con filtri sotto le colonne -----
+    let csOrdine = 'data';
+    const CS_FILTRI = ['cs-nome', 'cs-iscritti', 'cs-shorts', 'cs-normale', 'cs-virali', 'cs-top', 'cs-data'];
+    function iscrittiDi(r) {
+      const imp = r.impostazioni || {};
+      if (imp.canale && imp.canale.iscritti != null) return imp.canale.iscritti;
+      return r.video && r.video[0] && r.video[0].iscritti != null ? r.video[0].iscritti : null;
+    }
     function disegnaCanali() {
       pulisciCanaliLocali();
+      disegnaGruppi();
       const online = !!dbSessione;
-      const righe = online ? canaliDb : canaliLocali();
-      $('c-storico-sub').textContent = online
-        ? 'Salvati nel database online: li ritrovi da ogni computer. Dopo 30 giorni l\'elenco degli Shorts viene cancellato, come chiedono le regole di YouTube.'
-        : 'Salvati in questo browser. Per ritrovarli da ogni computer entra con il tuo account nella pagina "Le tue ricerche". Dopo 30 giorni l\'elenco degli Shorts viene cancellato, come chiedono le regole di YouTube.';
-      const box = $('c-lista');
-      box.replaceChildren();
-      $('c-tutti-btn').hidden = !righe.some((r) => !(r.impostazioni && r.impostazioni.scaduta) && (online || (r.video && r.video.length)));
+      const tuttiGruppi = cGruppoVista === TUTTI_GRUPPI;
+      const delGruppo = righeCanali().filter((r) => tuttiGruppi || gruppoDi(r) === cGruppoVista);
+      $('c-storico-titolo').textContent = tuttiGruppi ? 'Canali analizzati · tutti i gruppi' : 'Canali analizzati · ' + cGruppoVista;
+      $('c-storico-sub').textContent = (online
+        ? 'Salvati nel database online: li ritrovi da ogni computer.'
+        : 'Salvati in questo browser. Per ritrovarli da ogni computer entra con il tuo account nella pagina "Le tue ricerche".') +
+        ' Dopo 30 giorni l\'elenco degli Shorts viene cancellato, come chiedono le regole di YouTube.';
+      $('c-tutti-btn').hidden = !delGruppo.some((r) => !(r.impostazioni && r.impostazioni.scaduta) && (online || (r.video && r.video.length)));
+      $('c-tutti-btn').textContent = tuttiGruppi ? 'Elenco di tutti i video virali (tutti i gruppi)' : 'Elenco dei video virali del gruppo "' + cGruppoVista + '"';
       if (!$('c-tutti').hidden) mostraTuttiVirali(false);   // l'elenco aperto si aggiorna con i nuovi canali
-      if (!righe.length) { box.append(paragrafo('Ancora nessun canale analizzato.', 'muted')); return; }
-      const tabella = document.createElement('table'); tabella.className = 'storico';
-      const trh = document.createElement('tr');
-      [['Canale', ''], ['Shorts analizzati', 'r'], ['Di solito fa', 'r'], ['Shorts virali', 'r'], ['Il più visto', 'r'], ['', '']].forEach(([t, cl]) => {
-        const th = document.createElement('th'); th.className = cl; th.textContent = t; trh.append(th);
+
+      // filtri
+      const nome = normalizzaTesto($('cs-nome').value);
+      const [iMin, iMax] = $('cs-iscritti').value ? $('cs-iscritti').value.split('-').map(Number) : [null, null];
+      const minimo = (id) => +$(id).value || 0;
+      const giorni = minimo('cs-data');
+      const ora = Date.now();
+      const filtrate = delGruppo.filter((r) => {
+        const x = r.riassunto || {}, imp = r.impostazioni || {};
+        const isc = iscrittiDi(r);
+        if (nome && !normalizzaTesto((imp.canaleNome || '') + ' ' + r.ricerca).includes(nome)) return false;
+        if (iMin != null && !(isc != null && isc >= iMin && isc < iMax)) return false;
+        if ((x.shorts || 0) < minimo('cs-shorts') || (x.normale || 0) < minimo('cs-normale')) return false;
+        if ((x.virali || 0) < minimo('cs-virali') || (x.top || 0) < minimo('cs-top')) return false;
+        if (giorni && ora - new Date(r.creato).getTime() > giorni * GIORNO) return false;
+        return true;
       });
-      const thead = document.createElement('thead'); thead.append(trh); tabella.append(thead);
-      const tbody = document.createElement('tbody');
-      righe.forEach((r) => {
+      const chiave = {
+        nome: (r) => (r.impostazioni && r.impostazioni.canaleNome) || r.ricerca, iscritti: iscrittiDi,
+        shorts: (r) => (r.riassunto || {}).shorts, normale: (r) => (r.riassunto || {}).normale, virali: (r) => (r.riassunto || {}).virali,
+        top: (r) => (r.riassunto || {}).top, data: (r) => new Date(r.creato).getTime(),
+      }[csOrdine] || ((r) => new Date(r.creato).getTime());
+      filtrate.sort((a, b) => csOrdine === 'nome' ? String(chiave(a)).localeCompare(String(chiave(b)), 'it')
+        : (chiave(b) == null ? -1 : chiave(b)) - (chiave(a) == null ? -1 : chiave(a)));
+      document.querySelectorAll('[data-sord]').forEach((bt) => { if (bt.dataset.sord === csOrdine) bt.setAttribute('aria-sort', csOrdine === 'nome' ? 'ascending' : 'descending'); else bt.removeAttribute('aria-sort'); });
+      const filtriAttivi = CS_FILTRI.some((id) => $(id).value && $(id).value !== '0');
+      $('cs-conta').textContent = !delGruppo.length ? '' : filtriAttivi
+        ? filtrate.length + ' canali su ' + delGruppo.length + ' rispettano i filtri.'
+        : delGruppo.length + (delGruppo.length === 1 ? ' canale.' : ' canali.');
+
+      const tbody = $('c-lista-body');
+      tbody.replaceChildren();
+      if (!filtrate.length) {
+        const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 8;
+        td.append(paragrafo(delGruppo.length ? 'Nessun canale rispetta questi filtri. Prova ad allargarli o premi "Togli i filtri".'
+          : (tuttiGruppi ? 'Ancora nessun canale analizzato.' : 'Ancora nessun canale in questo gruppo: incolla qui sopra i link dei canali e premi Analizza.'), 'muted'));
+        tr.append(td); tbody.append(tr);
+      }
+      filtrate.forEach((r) => {
         const x = r.riassunto || {}, imp = r.impostazioni || {};
         const tr = document.createElement('tr');
         const td0 = document.createElement('td'); td0.className = 'fisso';
         const nomeBox = document.createElement('div'); nomeBox.className = 'nome';
         const b = document.createElement('b'); b.textContent = imp.canaleNome || r.ricerca;
         const sm = document.createElement('small');
-        const quando = new Date(r.creato);
         const vuota = !online && !(r.video && r.video.length);
-        sm.textContent = quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) + ' alle ' +
-          quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) +
+        sm.textContent = (tuttiGruppi ? gruppoDi(r) + ' · ' : '') + (imp.canale && imp.canale.handle ? imp.canale.handle : '') +
           (imp.scaduta ? ' · dettagli cancellati dopo 30 giorni' : vuota ? ' · dettagli non più nel browser' : '');
+        sm.textContent = sm.textContent.replace(/^ · /, '');
         nomeBox.append(b, sm); td0.append(nomeBox); tr.append(td0);
-        [[x.shorts != null ? nf.format(x.shorts) : '–'], [x.normale != null ? compatto(x.normale) : '–'],
+        const isc = iscrittiDi(r);
+        const quando = new Date(r.creato);
+        [[isc != null ? compatto(isc) : '–'], [x.shorts != null ? nf.format(x.shorts) : '–'], [x.normale != null ? compatto(x.normale) : '–'],
           [x.virali != null ? nf.format(x.virali) + (x.shorts ? ' · ' + Math.round(x.virali / x.shorts * 100) + '%' : '') : '–'],
-          [x.top != null ? compatto(x.top) + (x.topVolte ? ' (×' + nf1.format(x.topVolte) + ')' : '') : '–']]
-          .forEach(([t]) => { const td = document.createElement('td'); td.className = 'r num'; td.textContent = t; tr.append(td); });
+          [x.top != null ? compatto(x.top) + (x.topVolte ? ' (×' + nf1.format(x.topVolte) + ')' : '') : '–'],
+          [quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ' + quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })]]
+          .forEach(([t], i) => { const td = document.createElement('td'); td.className = i === 5 ? 'r' : 'r num'; td.textContent = t; tr.append(td); });
         const tdA = document.createElement('td'); const az = document.createElement('div'); az.className = 'azioni';
         const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light';
         if (imp.scaduta || vuota) {
           apri.textContent = 'Rifai'; apri.title = 'Analizza di nuovo il canale con dati aggiornati (usa pochi crediti)';
-          apri.addEventListener('click', () => { $('c-input').value = r.ricerca; contaLink(); $('c-input').focus(); cMessaggio('Ho scritto il link: premi "Analizza il canale" per rifarlo con dati aggiornati.', 'info'); $('c-form').scrollIntoView({ block: 'start' }); });
+          apri.addEventListener('click', () => {
+            if (gruppoDi(r) !== cGruppo) scegliGruppo(gruppoDi(r));
+            $('c-input').value = r.ricerca; contaLink(); $('c-input').focus();
+            cMessaggio('Ho scritto il link: premi "Analizza il canale" per rifarlo con dati aggiornati.', 'info');
+            $('c-form').scrollIntoView({ block: 'start' });
+          });
         } else {
           apri.textContent = 'Apri';
           apri.addEventListener('click', () => apriCanale(r, apri, online));
@@ -3913,10 +4129,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         az.append(apri, del); tdA.append(az); tr.append(tdA);
         tbody.append(tr);
       });
-      tabella.append(tbody);
-      const scorri = document.createElement('div'); scorri.className = 'table-box storico-box'; scorri.append(tabella);
-      box.append(scorri);
     }
+    CS_FILTRI.forEach((id) => $(id).addEventListener(id === 'cs-nome' ? 'input' : 'change', disegnaCanali));
+    $('cs-reset').addEventListener('click', () => { CS_FILTRI.forEach((id) => { $(id).value = id === 'cs-nome' || id === 'cs-iscritti' ? '' : '0'; }); disegnaCanali(); });
+    document.querySelectorAll('[data-sord]').forEach((bt) => bt.addEventListener('click', () => { csOrdine = bt.dataset.sord; disegnaCanali(); }));
 
     // ----- Elenco di tutti i video virali dei canali analizzati -----
     let tVideo = [];          // virali di tutti i canali, con il canale e "volte il normale"
@@ -3925,7 +4141,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const T_FILTRI = ['t-titolo', 't-escludi', 't-durata', 't-canale', 't-uscito', 't-views', 't-volte', 't-vpd', 't-likes', 't-commenti'];
     async function caricaTuttiVirali() {
       const online = !!dbSessione;
-      let righe = (online ? canaliDb : canaliLocali()).filter((r) => !(r.impostazioni && r.impostazioni.scaduta));
+      let righe = (online ? canaliDb : canaliLocali()).filter((r) => !(r.impostazioni && r.impostazioni.scaduta))
+        .filter((r) => cGruppoVista === TUTTI_GRUPPI || gruppoDi(r) === cGruppoVista);
       // dello stesso canale tengo solo l'analisi più recente
       const visti = new Set();
       righe = righe.filter((r) => { const id = (r.impostazioni && r.impostazioni.canaleId) || r.ricerca; if (visti.has(id)) return false; visti.add(id); return true; });
@@ -3959,6 +4176,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         sel.replaceChildren(new Option('Tutti', ''));
         [...new Set(canali)].sort((a, b) => a.localeCompare(b, 'it')).forEach((n) => sel.append(new Option(n, n)));
         sel.value = [...sel.options].some((o) => o.value === prima) ? prima : '';
+        $('c-tutti-titolo').textContent = cGruppoVista === TUTTI_GRUPPI ? 'Tutti i video virali dei canali analizzati' : 'I video virali del gruppo "' + cGruppoVista + '"';
         $('c-tutti-sub').textContent = nf.format(tutti.length) + ' Shorts virali da ' + canali.length + (canali.length === 1 ? ' canale' : ' canali') +
           ' (virale = almeno ' + VOLTE_VIRALE + ' volte quello che il suo canale fa di solito). Usa i filtri sotto i titoli delle colonne; premi un titolo per ordinare.';
         $('c-tutti').hidden = false;
@@ -4027,6 +4245,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       $('t-more').textContent = 'Mostra altri ' + Math.min(50, Math.max(0, altri));
     }
     $('c-tutti-btn').addEventListener('click', () => mostraTuttiVirali(true));
+    function tChiudi() { $('c-tutti').hidden = true; tVideo = []; }
     T_FILTRI.forEach((id) => $(id).addEventListener(id === 't-titolo' || id === 't-escludi' ? 'input' : 'change', () => { tMostrati = 50; tTabella(); }));
     $('c-tutti-reset').addEventListener('click', () => {
       T_FILTRI.forEach((id) => { $(id).value = id === 't-volte' ? '3' : (id === 't-titolo' || id === 't-escludi' || id === 't-canale' || id === 't-durata') ? '' : '0'; });
