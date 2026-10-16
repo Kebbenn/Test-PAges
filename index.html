@@ -378,6 +378,7 @@
     .filtri-colonne input, .filtri-colonne select { width: 100%; min-width: 92px; font-size: .8rem; padding: 7px 8px; border-radius: 8px; flex: none; }
     .filtri-colonne th:first-child input { min-width: 180px; }
     .filtro-doppio { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 6px; }
+    .filtro-doppio .escludi { grid-column: 1 / -1; }
     .t-tutti td.canale-cella { max-width: 170px; white-space: normal; overflow-wrap: anywhere; font-size: .85rem; color: var(--ink-2); }
     #c-tutti[hidden] { display: none; }
     table.t-tutti { min-width: 1120px; }
@@ -991,7 +992,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
               </tr>
               <tr class="filtri-colonne">
                 <th><div class="filtro-doppio"><input id="t-titolo" type="search" placeholder="Cerca nel titolo" aria-label="Cerca nel titolo" autocomplete="off">
-                  <select id="t-durata" aria-label="Durata"><option value="">Ogni durata</option><option value="0-15">Sotto 15 s</option><option value="15-30">15 – 30 s</option><option value="30-60">30 – 60 s</option><option value="60-999">Oltre 1 min</option></select></div></th>
+                  <select id="t-durata" aria-label="Durata"><option value="">Ogni durata</option><option value="0-15">Sotto 15 s</option><option value="15-30">15 – 30 s</option><option value="30-60">30 – 60 s</option><option value="60-999">Oltre 1 min</option></select>
+                  <input id="t-escludi" class="escludi" type="search" placeholder="Togli i titoli con… (es. minecraft, roblox)" aria-label="Togli i titoli che contengono queste parole" autocomplete="off"></div></th>
                 <th><select id="t-canale" aria-label="Filtra per canale"><option value="">Tutti</option></select></th>
                 <th><select id="t-uscito" aria-label="Filtra per data"><option value="0">Sempre</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option><option value="90">Ultimi 3 mesi</option><option value="365">Ultimo anno</option></select></th>
                 <th><select id="t-views" aria-label="Visualizzazioni minime"><option value="0">Tutte</option><option value="100000">100k o più</option><option value="500000">500k o più</option><option value="1000000">1 Mln o più</option><option value="5000000">5 Mln o più</option><option value="10000000">10 Mln o più</option></select></th>
@@ -3920,7 +3922,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     let tVideo = [];          // virali di tutti i canali, con il canale e "volte il normale"
     let tOrdine = 'volte';
     let tMostrati = 50;
-    const T_FILTRI = ['t-titolo', 't-durata', 't-canale', 't-uscito', 't-views', 't-volte', 't-vpd', 't-likes', 't-commenti'];
+    const T_FILTRI = ['t-titolo', 't-escludi', 't-durata', 't-canale', 't-uscito', 't-views', 't-volte', 't-vpd', 't-likes', 't-commenti'];
     async function caricaTuttiVirali() {
       const online = !!dbSessione;
       let righe = (online ? canaliDb : canaliLocali()).filter((r) => !(r.impostazioni && r.impostazioni.scaduta));
@@ -3971,6 +3973,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     }
     function tFiltrati() {
       const testo = normalizzaTesto($('t-titolo').value);
+      // parole da togliere: separate da virgola (una frase intera va bene, es. "gta 6, roblox")
+      // conto le parole intere: "car" toglie "best car" ma non "cartoon"
+      const soloParole = (t) => ' ' + normalizzaTesto(t).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' ';
+      const via = $('t-escludi').value.split(/[,;]+/).map(soloParole).filter((w) => w.trim());
       const canale = $('t-canale').value;
       const giorni = +$('t-uscito').value, minV = +$('t-views').value, minX = +$('t-volte').value || VOLTE_VIRALE;
       const minG = +$('t-vpd').value, minL = +$('t-likes').value, minC = +$('t-commenti').value;
@@ -3978,6 +3984,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const ora = Date.now();
       return tVideo.filter((v) =>
         (!testo || normalizzaTesto(v.titolo).includes(testo)) &&
+        (!via.length || !via.some((w) => soloParole(v.titolo).includes(w))) &&
         (!canale || v.canale === canale) &&
         (!giorni || ora - v.data <= giorni * GIORNO) &&
         v.views >= minV && v.volte >= minX && (v.vpd || 0) >= minG && (!minL || (v.likes || 0) >= minL) && (!minC || (v.commenti || 0) >= minC) &&
@@ -4020,9 +4027,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       $('t-more').textContent = 'Mostra altri ' + Math.min(50, Math.max(0, altri));
     }
     $('c-tutti-btn').addEventListener('click', () => mostraTuttiVirali(true));
-    T_FILTRI.forEach((id) => $(id).addEventListener(id === 't-titolo' ? 'input' : 'change', () => { tMostrati = 50; tTabella(); }));
+    T_FILTRI.forEach((id) => $(id).addEventListener(id === 't-titolo' || id === 't-escludi' ? 'input' : 'change', () => { tMostrati = 50; tTabella(); }));
     $('c-tutti-reset').addEventListener('click', () => {
-      T_FILTRI.forEach((id) => { $(id).value = id === 't-volte' ? '3' : (id === 't-titolo' || id === 't-canale' || id === 't-durata') ? '' : '0'; });
+      T_FILTRI.forEach((id) => { $(id).value = id === 't-volte' ? '3' : (id === 't-titolo' || id === 't-escludi' || id === 't-canale' || id === 't-durata') ? '' : '0'; });
       tMostrati = 50; tTabella();
     });
     document.querySelectorAll('[data-tord]').forEach((b) => b.addEventListener('click', () => { tOrdine = b.dataset.tord; tTabella(); }));
