@@ -592,7 +592,12 @@
     .chip.new { background: color-mix(in srgb, var(--g1) 12%, transparent); color: var(--g1); }
     .depth input:checked + span { border-color: var(--g1); box-shadow: inset 0 0 0 1px var(--g1); background: color-mix(in srgb, var(--g1) 8%, var(--surface)); }
     .seg button[aria-pressed="true"] { color: var(--g1); }
-    input:focus { border-color: color-mix(in srgb, var(--g1) 55%, var(--line)); }
+    input:focus, textarea:focus { border-color: color-mix(in srgb, var(--g1) 55%, var(--line)); }
+    textarea {
+      width: 100%; min-width: 0; font: inherit; font-size: .95rem; line-height: 1.5; resize: vertical;
+      padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    }
+    textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     /* Schede "come funziona" con icona colorata */
     .intro .ico {
@@ -831,14 +836,15 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         <div class="card-head">
           <span class="label">Analizza un canale</span>
           <h2>Quali Shorts sono esplosi su un canale?</h2>
-          <p>Incolla il link di un canale oppure di uno Short: trovo gli Shorts di quel canale e ti mostro quali sono diventati virali.</p>
+          <p>Incolla il link di uno o più canali (oppure di uno Short): trovo gli Shorts di ogni canale e ti mostro quali sono diventati virali.</p>
         </div>
         <div class="step">
           <span class="step-n">1</span>
           <div class="step-body">
-            <label class="step-title" for="c-input">Link del canale o dello Short</label>
-            <p class="step-hint">Va bene per esempio youtube.com/@nomecanale, youtube.com/shorts/… oppure solo @nomecanale.</p>
-            <input id="c-input" type="text" placeholder="https://www.youtube.com/@nomecanale" required autocomplete="off" spellcheck="false">
+            <label class="step-title" for="c-input">Link dei canali o degli Shorts</label>
+            <p class="step-hint">Puoi incollarne anche più di uno (fino a 20): <b>uno per riga</b>. Va bene per esempio youtube.com/@nomecanale, youtube.com/shorts/… oppure solo @nomecanale.</p>
+            <textarea id="c-input" rows="3" placeholder="https://www.youtube.com/@primocanale&#10;https://www.youtube.com/@secondocanale" required autocomplete="off" spellcheck="false"></textarea>
+            <p class="step-hint" id="c-conta"></p>
           </div>
         </div>
         <div class="step">
@@ -3492,8 +3498,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       r.addEventListener('change', () => { cLivello = r.value; scrivi(K_C_LIVELLO, cLivello); });
     });
 
+    let cPasso = '';   // "(2 di 5) " mentre analizzo più canali di fila
     function cMessaggio(testo, tipo) {
       const box = $('c-msg');
+      if (testo && tipo === 'info' && cPasso) testo = cPasso + testo;
       box.hidden = !testo;
       box.textContent = testo || '';
       box.className = testo ? 'msg ' + tipo : '';
@@ -3823,7 +3831,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         const apri = document.createElement('button'); apri.type = 'button'; apri.className = 'btn-light';
         if (imp.scaduta || vuota) {
           apri.textContent = 'Rifai'; apri.title = 'Analizza di nuovo il canale con dati aggiornati (usa pochi crediti)';
-          apri.addEventListener('click', () => { $('c-input').value = r.ricerca; $('c-input').focus(); cMessaggio('Ho scritto il link: premi "Analizza il canale" per rifarlo con dati aggiornati.', 'info'); $('c-form').scrollIntoView({ block: 'start' }); });
+          apri.addEventListener('click', () => { $('c-input').value = r.ricerca; contaLink(); $('c-input').focus(); cMessaggio('Ho scritto il link: premi "Analizza il canale" per rifarlo con dati aggiornati.', 'info'); $('c-form').scrollIntoView({ block: 'start' }); });
         } else {
           apri.textContent = 'Apri';
           apri.addEventListener('click', () => apriCanale(r, apri, online));
@@ -3879,32 +3887,67 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       }
     }
 
+    const MAX_LINK = 20;
+    // un link per riga; se in una riga ci sono più link separati da spazi, li divido
+    const sembraLink = (t) => /youtu|^@|^UC[\w-]{22}$/i.test(t);
+    const linkIncollati = () => [...new Set($('c-input').value.split(/[\n\r,;]+/).map((t) => t.trim()).filter(Boolean)
+      .flatMap((riga) => { const pezzi = riga.split(/\s+/); return pezzi.length > 1 && pezzi.every(sembraLink) ? pezzi : [riga]; }))];
+    function contaLink() {
+      const n = linkIncollati().length;
+      $('c-conta').textContent = n > 1 ? n + ' link: li analizzo uno dopo l\'altro, circa ' + nf.format(n * Math.round(+cLivello / 20)) + ' crediti in tutto.' : '';
+      $('c-btn').textContent = n > 1 ? 'Analizza i ' + Math.min(n, MAX_LINK) + ' canali' : 'Analizza il canale';
+    }
+    $('c-input').addEventListener('input', contaLink);
+    document.querySelectorAll('input[name="c-livello"]').forEach((r) => r.addEventListener('change', contaLink));
+
     $('c-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const testo = $('c-input').value.trim();
-      if (!testo) return;
+      const testi = linkIncollati();
+      if (!testi.length) return;
       if (!chiave) {
         cMessaggio('Prima salva la tua chiave YouTube nella pagina "Analizza" (in alto, "La tua chiave YouTube").', 'error');
         return;
       }
-      const link = leggiLink(testo);
-      if (!link) { cMessaggio('Non riconosco questo link. Incolla il link di un canale (es. youtube.com/@nomecanale) o di uno Short.', 'error'); return; }
+      if (testi.length > MAX_LINK) { cMessaggio('Hai incollato ' + testi.length + ' link: al massimo ' + MAX_LINK + ' alla volta.', 'error'); return; }
       $('c-btn').disabled = true;
       const prima = creditiUsati();
+      const fatti = [], errori = [], visti = new Set();
       try {
-        const momento = Date.now();
-        const ris = await analizzaCanale(link, momento);
-        if (!ris.video.length) { cMessaggio('Non ho trovato Shorts su questo canale (o sono tutti più lunghi di 3 minuti).', 'info'); return; }
-        cAttuale = Object.assign(ris, { momento, testo });
-        cMostra = 'virali'; cOrdine = 'views'; cSalvataId = null;
-        cMessaggio('Fatto: ho usato ' + nf.format(creditiUsati() - prima) + ' crediti.', 'info');
-        mostraCanale();
-        await salvaCanale();
-      } catch (err) {
-        cMessaggio(err.message, 'error');
+        for (let i = 0; i < testi.length; i++) {
+          const testo = testi[i];
+          cPasso = testi.length > 1 ? '(' + (i + 1) + ' di ' + testi.length + ') ' : '';
+          const link = leggiLink(testo);
+          if (!link) { errori.push(testo + ': non è un link di YouTube che riconosco'); continue; }
+          try {
+            const momento = Date.now();
+            const ris = await analizzaCanale(link, momento);
+            if (visti.has(ris.canale.id)) { errori.push(testo + ': è lo stesso canale di un altro link, l\'ho analizzato una volta sola'); continue; }
+            visti.add(ris.canale.id);
+            if (!ris.video.length) { errori.push(ris.canale.nome + ': nessuno Short trovato (o sono tutti più lunghi di 3 minuti)'); continue; }
+            cAttuale = Object.assign(ris, { momento, testo });
+            cAttuale.normale = calcoliCanale(cAttuale.video).normale;
+            await salvaCanale();
+            fatti.push(cAttuale);
+          } catch (err) {
+            errori.push(testo + ': ' + err.message);
+            if (/crediti|chiave|API/.test(err.message)) break;   // senza crediti o con la chiave sbagliata è inutile continuare
+          }
+        }
       } finally {
+        cPasso = '';
         $('c-btn').disabled = false;
       }
+      const usati = nf.format(creditiUsati() - prima);
+      if (!fatti.length) { cMessaggio(errori.join(' · ') || 'Non sono riuscito ad analizzare nessun canale.', 'error'); return; }
+      cAttuale = fatti[0];
+      cMostra = 'virali'; cOrdine = 'views';
+      mostraCanale();
+      $('c-save-status').textContent = 'Salvato ✓';
+      let testoFine = fatti.length === 1 ? 'Fatto: ho usato ' + usati + ' crediti.'
+        : 'Fatto: ho analizzato ' + fatti.length + ' canali e ho usato ' + usati + ' crediti. Qui sotto vedi il primo (' + fatti[0].canale.nome +
+          '); gli altri li trovi in fondo alla pagina, in "Canali analizzati": premi "Apri".';
+      if (errori.length) testoFine += ' Non ci sono riuscito per: ' + errori.join(' · ');
+      cMessaggio(testoFine, errori.length ? 'error' : 'info');
     });
     document.querySelectorAll('[data-cmostra]').forEach((b) => b.addEventListener('click', () => { cMostra = b.dataset.cmostra; cMostrati = 50; cTabella(); }));
     document.querySelectorAll('[data-cord]').forEach((b) => b.addEventListener('click', () => { cOrdine = b.dataset.cord; cTabella(); }));
