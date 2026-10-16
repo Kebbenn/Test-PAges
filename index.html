@@ -855,7 +855,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           <span class="step-n">1</span>
           <div class="step-body">
             <label class="step-title" for="c-input">Link dei canali o degli Shorts</label>
-            <p class="step-hint">Puoi incollarne anche più di uno (fino a 20): <b>uno per riga</b>. Va bene per esempio youtube.com/@nomecanale, youtube.com/shorts/… oppure solo @nomecanale.</p>
+            <p class="step-hint">Puoi incollarne anche tanti insieme (fino a 100): <b>uno per riga</b>. Va bene per esempio youtube.com/@nomecanale, youtube.com/shorts/… oppure solo @nomecanale.</p>
             <textarea id="c-input" rows="3" placeholder="https://www.youtube.com/@primocanale&#10;https://www.youtube.com/@secondocanale" required autocomplete="off" spellcheck="false"></textarea>
             <p class="step-hint" id="c-conta"></p>
           </div>
@@ -4074,15 +4074,21 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       }
     }
 
-    const MAX_LINK = 20;
+    const MAX_LINK = 100;
     // un link per riga; se in una riga ci sono più link separati da spazi, li divido
     const sembraLink = (t) => /youtu|^@|^UC[\w-]{22}$/i.test(t);
     const linkIncollati = () => [...new Set($('c-input').value.split(/[\n\r,;]+/).map((t) => t.trim()).filter(Boolean)
       .flatMap((riga) => { const pezzi = riga.split(/\s+/); return pezzi.length > 1 && pezzi.every(sembraLink) ? pezzi : [riga]; }))];
     function contaLink() {
       const n = linkIncollati().length;
-      $('c-conta').textContent = n > 1 ? n + ' link: li analizzo uno dopo l\'altro, circa ' + nf.format(n * Math.round(+cLivello / 20)) + ' crediti in tutto.' : '';
-      $('c-btn').textContent = n > 1 ? 'Analizza i ' + Math.min(n, MAX_LINK) + ' canali' : 'Analizza il canale';
+      const fatti = Math.min(n, MAX_LINK);
+      const costo = fatti * Math.round(+cLivello / 20);
+      const restano = Math.max(0, CREDITI_GIORNO - creditiUsati());
+      let nota = n > 1 ? n + ' link: li analizzo uno dopo l\'altro, circa ' + nf.format(costo) + ' crediti in tutto.' : '';
+      if (n > MAX_LINK) nota = n + ' link: al massimo ' + MAX_LINK + ' alla volta, quindi analizzo i primi ' + MAX_LINK + ' (circa ' + nf.format(costo) + ' crediti). Gli altri ' + (n - MAX_LINK) + ' restano nel riquadro: li fai dopo premendo di nuovo il pulsante.';
+      if (n > 1 && costo > restano) nota += ' Attenzione: oggi ti restano circa ' + nf.format(restano) + ' crediti, quindi potrei fermarmi prima della fine.';
+      $('c-conta').textContent = nota;
+      $('c-btn').textContent = n > 1 ? 'Analizza ' + (n > MAX_LINK ? 'i primi ' : 'i ') + fatti + ' canali' : 'Analizza il canale';
     }
     $('c-input').addEventListener('input', contaLink);
     document.querySelectorAll('input[name="c-livello"]').forEach((r) => r.addEventListener('change', contaLink));
@@ -4095,7 +4101,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         cMessaggio('Prima salva la tua chiave YouTube nella pagina "Analizza" (in alto, "La tua chiave YouTube").', 'error');
         return;
       }
-      if (testi.length > MAX_LINK) { cMessaggio('Hai incollato ' + testi.length + ' link: al massimo ' + MAX_LINK + ' alla volta.', 'error'); return; }
+      const avanzati = testi.splice(MAX_LINK);   // oltre i 100 link: analizzo i primi 100
       $('c-btn').disabled = true;
       const prima = creditiUsati();
       const fatti = [], errori = [], visti = new Set();
@@ -4134,6 +4140,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         : 'Fatto: ho analizzato ' + fatti.length + ' canali e ho usato ' + usati + ' crediti. Qui sotto vedi il primo (' + fatti[0].canale.nome +
           '); gli altri li trovi in fondo alla pagina, in "Canali analizzati": premi "Apri".';
       if (errori.length) testoFine += ' Non ci sono riuscito per: ' + errori.join(' · ');
+      if (avanzati.length) {
+        testoFine += ' Ho lasciato nel riquadro i ' + avanzati.length + ' link che non ho ancora fatto: premi di nuovo il pulsante per continuare.';
+        $('c-input').value = avanzati.join('\n'); contaLink();
+      }
       cMessaggio(testoFine, errori.length ? 'error' : 'info');
     });
     document.querySelectorAll('[data-cmostra]').forEach((b) => b.addEventListener('click', () => { cMostra = b.dataset.cmostra; cMostrati = 50; cTabella(); }));
