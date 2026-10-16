@@ -545,7 +545,6 @@
         radial-gradient(35% 45% at 85% 10%, var(--glow-2), transparent 70%),
         radial-gradient(30% 40% at 60% 55%, var(--glow-3), transparent 70%);
       filter: blur(20px);
-      animation: galleggia 18s ease-in-out infinite alternate;
     }
     @keyframes galleggia { to { transform: translate3d(0, 3%, 0) scale(1.05); } }
 
@@ -554,7 +553,7 @@
       background: linear-gradient(90deg, var(--g1), var(--g2), var(--g3), var(--g2), var(--g1));
       background-size: 300% 100%;
       -webkit-background-clip: text; background-clip: text; color: transparent;
-      animation: scorri 8s linear infinite;
+      animation: scorri 8s linear 2;
     }
     @keyframes scorri { to { background-position: 300% 0; } }
     h1.grad-text { font-size: 2.1rem; letter-spacing: -0.035em; }
@@ -589,7 +588,7 @@
       background: conic-gradient(from var(--beam), transparent 0 70%, var(--g1) 80%, var(--g2) 88%, var(--g3) 94%, transparent 100%);
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor; mask-composite: exclude;
-      animation: gira 5s linear infinite;
+      animation: gira 5s linear 2;   /* gira due volte e si ferma: un'animazione infinita rallenta i computer meno potenti */
     }
     @keyframes gira { to { --beam: 360deg; } }
 
@@ -3271,7 +3270,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const limite = new Date(Date.now() - GIORNI_CONSERVAZIONE * GIORNO).toISOString();
       const vecchie = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&creato=lt.' + encodeURIComponent(limite) +
         '&order=creato.asc&limit=500', { method: 'GET' }, true);
-      for (const r of vecchie.filter((x) => !(x.impostazioni && x.impostazioni.scaduta))) {
+      const daPulire = vecchie.filter((x) => !(x.impostazioni && x.impostazioni.scaduta));
+      dbPulito = true;
+      for (const r of daPulire) {
         // le regole del database permettono di salvare e cancellare: cancello la ricerca e la salvo di nuovo senza gli Shorts
         await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(r.id), { method: 'DELETE' }, true);
         await chiamaDb('/rest/v1/ricerche', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({
@@ -3279,7 +3280,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           impostazioni: Object.assign({}, r.impostazioni || {}, { scaduta: true, canaleNome: undefined, canale: undefined }),
         }) }, true);
       }
-      dbPulito = true;
+      return daPulire.length > 0;
     }
 
     // ---------- Riassunto salvato per ogni ricerca (serve anche ai filtri dello storico) ----------
@@ -3312,8 +3313,15 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     const FILTRI = ['f-nome', 'f-ordine', 'f-finale', 'f-viral', 'f-opp', 'f-rep', 'f-piccolo', 'f-ripetuti', 'f-shorts'];
     let dbRighe = [];
     let dbMostrate = 20;
-    async function caricaStorico() {
-      try { await pulisciDb(); } catch (e) { /* riprovo la prossima volta */ }
+    // I riassunti calcolati per le ricerche vecchie li tengo nel browser: così non riscarico i loro Shorts a ogni apertura
+    const K_RIASSUNTI = 'radar-riassunti-calcolati';
+    let caricoInCorso = null;
+    function caricaStorico() {
+      // se arrivano più richieste insieme (es. analisi di tanti canali) ne faccio una sola
+      if (!caricoInCorso) caricoInCorso = caricaStoricoOra().finally(() => { caricoInCorso = null; });
+      return caricoInCorso;
+    }
+    async function caricaStoricoOra() {
       try {
         const tutte = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto&order=creato.desc&limit=1000', { method: 'GET' }, true);
         const diCanale = (r) => r.impostazioni && r.impostazioni.tipo === 'canale';
@@ -3325,18 +3333,33 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         canaliDb = tutte.filter(diCanale);
         disegnaCanali();
         // le ricerche salvate prima di questa versione non hanno canali, canale piccolo e canali ripetuti: li calcolo dagli Shorts
-        const daCompletare = dbRighe.filter((r) => !(r.riassunto && r.riassunto.v >= 2) && !(r.impostazioni && r.impostazioni.scaduta)).slice(0, 50);
-        if (daCompletare.length) {
-          const conVideo = await chiamaDb('/rest/v1/ricerche?select=id,video&id=in.(' + daCompletare.map((r) => r.id).join(',') + ')', { method: 'GET' }, true);
+        const salvati = leggi(K_RIASSUNTI, {}) || {};
+        const daCompletare = dbRighe.filter((r) => !(r.riassunto && r.riassunto.v >= 2) && !(r.impostazioni && r.impostazioni.scaduta));
+        daCompletare.forEach((r) => { if (salvati[r.id]) r.riassunto = Object.assign({}, r.riassunto || {}, salvati[r.id]); });
+        disegnaStorico();
+        const mancano = daCompletare.filter((r) => !salvati[r.id]).slice(0, 10);
+        if (mancano.length) {
+          const conVideo = await chiamaDb('/rest/v1/ricerche?select=id,video&id=in.(' + mancano.map((r) => r.id).join(',') + ')', { method: 'GET' }, true);
           conVideo.forEach((x) => {
             const r = dbRighe.find((y) => y.id === x.id);
-            if (r && Array.isArray(x.video) && x.video.length) r.riassunto = Object.assign({}, r.riassunto || {}, riassuntoDaVideo(x.video));
+            if (r && Array.isArray(x.video) && x.video.length) {
+              salvati[x.id] = riassuntoDaVideo(x.video);
+              r.riassunto = Object.assign({}, r.riassunto || {}, salvati[x.id]);
+            }
           });
+          const ancora = new Set(dbRighe.map((r) => r.id));
+          Object.keys(salvati).forEach((id) => { if (!ancora.has(id)) delete salvati[id]; });
+          scrivi(K_RIASSUNTI, salvati);
+          disegnaStorico();
         }
-        disegnaStorico();
       } catch (e) {
         $('db-list').replaceChildren();
         statoDb(e.message, 'error');
+        return;
+      }
+      // la pulizia dei 30 giorni la faccio dopo aver mostrato l'elenco, così non fa aspettare
+      if (!dbPulito) {
+        try { if (await pulisciDb()) await caricaStoricoOra(); } catch (e) { /* riprovo la prossima volta */ }
       }
     }
     function valoreFiltro(id) { return $(id).value; }
@@ -3539,7 +3562,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (!dbSessione || !videoAttuali.length) return;
       statoSalvataggio('Salvo la ricerca nel database…');
       try {
-        const r = await chiamaDb('/rest/v1/ricerche', {
+        const r = await chiamaDb('/rest/v1/ricerche?select=id', {
           method: 'POST', headers: { Prefer: 'return=representation' },
           body: JSON.stringify({
             ricerca: ricercaAttuale,
@@ -3957,11 +3980,12 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       if (dbSessione) {
         $('c-save-status').textContent = 'Salvo anche nel database online…';
         try {
-          const r = await chiamaDb('/rest/v1/ricerche', { method: 'POST', headers: { Prefer: 'return=representation' },
+          const r = await chiamaDb('/rest/v1/ricerche?select=id,creato,ricerca,impostazioni,riassunto', { method: 'POST', headers: { Prefer: 'return=representation' },
             body: JSON.stringify({ ricerca: riga.ricerca, impostazioni: riga.impostazioni, riassunto: riga.riassunto, video: riga.video }) }, true);
           cSalvataId = r && r[0] ? r[0].id : null;
           $('c-save-status').textContent = 'Salvato nel database online ✓';
-          caricaStorico();
+          // lo aggiungo all'elenco senza ricaricare tutto, e tengo i suoi Shorts per l'elenco dei virali
+          if (r && r[0]) { canaliDb = [r[0], ...canaliDb.filter((y) => y.id !== r[0].id)]; videoCanaliDb.set(r[0].id, riga.video); }
         } catch (e) {
           $('c-save-status').textContent = 'Salvato solo in questo browser: il database online ha dato errore (' + e.message + ')';
         }
@@ -4042,7 +4066,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         ' Dopo 30 giorni l\'elenco degli Shorts viene cancellato, come chiedono le regole di YouTube.';
       $('c-tutti-btn').hidden = !delGruppo.some((r) => !(r.impostazioni && r.impostazioni.scaduta) && (online || (r.video && r.video.length)));
       $('c-tutti-btn').textContent = tuttiGruppi ? 'Elenco di tutti i video virali (tutti i gruppi)' : 'Elenco dei video virali del gruppo "' + cGruppoVista + '"';
-      if (!$('c-tutti').hidden) mostraTuttiVirali(false);   // l'elenco aperto si aggiorna con i nuovi canali
+      if (!$('c-tutti').hidden && firmaCanali() !== firmaVirali) mostraTuttiVirali(false);   // l'elenco aperto si aggiorna solo se sono cambiati i canali
 
       // filtri
       const nome = normalizzaTesto($('cs-nome').value);
@@ -4122,6 +4146,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             if (online) {
               await chiamaDb('/rest/v1/ricerche?id=eq.' + encodeURIComponent(r.id), { method: 'DELETE' }, true);
               canaliDb = canaliDb.filter((y) => y.id !== r.id);
+              videoCanaliDb.delete(r.id);
             } else scrivi(K_CANALI, canaliLocali().filter((y) => y.id !== r.id));
             disegnaCanali();
           } catch (e) { cMessaggio(e.message, 'error'); }
@@ -4130,7 +4155,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         tbody.append(tr);
       });
     }
-    CS_FILTRI.forEach((id) => $(id).addEventListener(id === 'cs-nome' ? 'input' : 'change', disegnaCanali));
+    CS_FILTRI.forEach((id) => $(id).addEventListener(id === 'cs-nome' ? 'input' : 'change', id === 'cs-nome' ? conCalma(() => disegnaCanali()) : () => disegnaCanali()));
     $('cs-reset').addEventListener('click', () => { CS_FILTRI.forEach((id) => { $(id).value = id === 'cs-nome' || id === 'cs-iscritti' ? '' : '0'; }); disegnaCanali(); });
     document.querySelectorAll('[data-sord]').forEach((bt) => bt.addEventListener('click', () => { csOrdine = bt.dataset.sord; disegnaCanali(); }));
 
@@ -4139,6 +4164,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     let tOrdine = 'volte';
     let tMostrati = 50;
     const T_FILTRI = ['t-titolo', 't-escludi', 't-durata', 't-canale', 't-uscito', 't-views', 't-volte', 't-vpd', 't-likes', 't-commenti'];
+    const videoCanaliDb = new Map();   // Shorts dei canali già scaricati dal database (non li riscarico)
+    let firmaVirali = '';              // quali canali c'erano nell'ultimo elenco dei virali
+    const firmaCanali = () => cGruppoVista + '|' + righeCanali().filter((r) => cGruppoVista === TUTTI_GRUPPI || gruppoDi(r) === cGruppoVista).map((r) => r.id).join(',');
     async function caricaTuttiVirali() {
       const online = !!dbSessione;
       let righe = (online ? canaliDb : canaliLocali()).filter((r) => !(r.impostazioni && r.impostazioni.scaduta))
@@ -4147,11 +4175,13 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const visti = new Set();
       righe = righe.filter((r) => { const id = (r.impostazioni && r.impostazioni.canaleId) || r.ricerca; if (visti.has(id)) return false; visti.add(id); return true; });
       if (online && righe.length) {
-        const conVideo = [];
-        for (const gruppo of aGruppi(righe.map((r) => r.id), 20)) {
-          conVideo.push(...await chiamaDb('/rest/v1/ricerche?select=id,video&id=in.(' + gruppo.join(',') + ')', { method: 'GET' }, true));
-        }
-        righe = righe.map((r) => Object.assign({}, r, { video: (conVideo.find((x) => x.id === r.id) || {}).video || [] }));
+        const mancano = righe.map((r) => r.id).filter((id) => !videoCanaliDb.has(id));
+        // scarico a gruppi di 15 canali, più gruppi insieme
+        await Promise.all(aGruppi(mancano, 15).map(async (gruppo) => {
+          (await chiamaDb('/rest/v1/ricerche?select=id,video&id=in.(' + gruppo.join(',') + ')', { method: 'GET' }, true))
+            .forEach((x) => videoCanaliDb.set(x.id, Array.isArray(x.video) ? x.video : []));
+        }));
+        righe = righe.map((r) => Object.assign({}, r, { video: videoCanaliDb.get(r.id) || [] }));
       }
       const tutti = [], idVisti = new Set(), canali = [];
       righe.filter((r) => Array.isArray(r.video) && r.video.length).forEach((r) => {
@@ -4169,9 +4199,13 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     async function mostraTuttiVirali(scorri) {
       const btn = $('c-tutti-btn');
       btn.disabled = true;
+      const testoBtn = btn.textContent;
+      if (dbSessione && righeCanali().some((r) => !videoCanaliDb.has(r.id))) btn.textContent = 'Scarico gli Shorts dei canali salvati…';
       try {
+        const firma = firmaCanali();
         const { tutti, canali } = await caricaTuttiVirali();
         tVideo = tutti;
+        firmaVirali = firma;
         const sel = $('t-canale'); const prima = sel.value;
         sel.replaceChildren(new Option('Tutti', ''));
         [...new Set(canali)].sort((a, b) => a.localeCompare(b, 'it')).forEach((n) => sel.append(new Option(n, n)));
@@ -4187,6 +4221,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         cMessaggio(e.message, 'error');
       } finally {
         btn.disabled = false;
+        btn.textContent = testoBtn;
       }
     }
     function tFiltrati() {
@@ -4245,8 +4280,12 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       $('t-more').textContent = 'Mostra altri ' + Math.min(50, Math.max(0, altri));
     }
     $('c-tutti-btn').addEventListener('click', () => mostraTuttiVirali(true));
-    function tChiudi() { $('c-tutti').hidden = true; tVideo = []; }
-    T_FILTRI.forEach((id) => $(id).addEventListener(id === 't-titolo' || id === 't-escludi' ? 'input' : 'change', () => { tMostrati = 50; tTabella(); }));
+    function tChiudi() { $('c-tutti').hidden = true; tVideo = []; firmaVirali = ''; }
+    T_FILTRI.forEach((id) => {
+      const agg = () => { tMostrati = 50; tTabella(); };
+      const testo = id === 't-titolo' || id === 't-escludi';
+      $(id).addEventListener(testo ? 'input' : 'change', testo ? conCalma(agg) : agg);
+    });
     $('c-tutti-reset').addEventListener('click', () => {
       T_FILTRI.forEach((id) => { $(id).value = id === 't-volte' ? '3' : (id === 't-titolo' || id === 't-escludi' || id === 't-canale' || id === 't-durata') ? '' : '0'; });
       tMostrati = 50; tTabella();
@@ -4397,7 +4436,12 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
     window.addEventListener('popstate', () => mostraVista(vistaDaIndirizzo()));
 
     // filtri dello storico
-    FILTRI.forEach((id) => $(id).addEventListener(id === 'f-nome' ? 'input' : 'change', () => { dbMostrate = 20; salvaFiltri(); disegnaStorico(); }));
+    // mentre scrivi in un campo di ricerca aspetto un attimo prima di ridisegnare, così non rallenta
+    function conCalma(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms || 180); }; }
+    FILTRI.forEach((id) => {
+      const agg = () => { dbMostrate = 20; salvaFiltri(); disegnaStorico(); };
+      $(id).addEventListener(id === 'f-nome' ? 'input' : 'change', id === 'f-nome' ? conCalma(agg) : agg);
+    });
     $('f-reset').addEventListener('click', () => {
       FILTRI.forEach((id) => { $(id).value = id === 'f-ordine' ? 'data' : (id === 'f-nome' ? '' : '0'); });
       dbMostrate = 20; salvaFiltri(); disegnaStorico();
