@@ -372,6 +372,18 @@
     .canale-pagina .run-stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
     @media (max-width: 760px) { .c-extra { grid-template-columns: minmax(0, 1fr); } }
 
+
+    /* Elenco di tutti i virali */
+    .filtri-colonne th { padding: 6px 6px 10px; vertical-align: top; }
+    .filtri-colonne input, .filtri-colonne select { width: 100%; min-width: 92px; font-size: .8rem; padding: 7px 8px; border-radius: 8px; flex: none; }
+    .filtri-colonne th:first-child input { min-width: 180px; }
+    .filtro-doppio { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 6px; }
+    .t-tutti td.canale-cella { max-width: 170px; white-space: normal; overflow-wrap: anywhere; font-size: .85rem; color: var(--ink-2); }
+    #c-tutti[hidden] { display: none; }
+    table.t-tutti { min-width: 1120px; }
+    table.t-tutti td:first-child { min-width: 300px; }
+    body[data-vista="canale"] .wrap { max-width: 1320px; }
+
     /* Quanto ha guardato la ricerca */
     .run-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
     .run-stats > div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; display: grid; gap: 2px; box-shadow: var(--shadow); }
@@ -946,7 +958,53 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           <h2>Canali analizzati</h2>
           <p id="c-storico-sub"></p>
         </div>
+        <div><button id="c-tutti-btn" class="shimmer" type="button" hidden>Elenco di tutti i video virali dei canali</button></div>
         <div class="storico-lista" id="c-lista"></div>
+      </section>
+
+      <section class="card" id="c-tutti" hidden>
+        <div class="table-head">
+          <div class="card-head">
+            <span class="label">Tutti i canali</span>
+            <h2>Tutti i video virali dei canali analizzati</h2>
+            <p id="c-tutti-sub"></p>
+          </div>
+          <div class="actions">
+            <button id="c-tutti-excel" class="shimmer" type="button">Scarica Excel</button>
+            <button id="c-tutti-csv" class="btn-light" type="button">Scarica CSV</button>
+            <button id="c-tutti-reset" class="btn-link" type="button">Togli i filtri</button>
+          </div>
+        </div>
+        <p class="muted" id="c-tutti-conta" style="font-size:.85rem"></p>
+        <div class="table-box">
+          <table class="c-tabella t-tutti">
+            <thead>
+              <tr>
+                <th>Short</th>
+                <th><button type="button" data-tord="canale">Canale</button></th>
+                <th><button type="button" data-tord="data">Uscito</button></th>
+                <th class="r"><button type="button" data-tord="views">Visualizzazioni</button></th>
+                <th class="r" title="Quante volte le visualizzazioni che il suo canale fa di solito"><button type="button" data-tord="volte">Volte il normale</button></th>
+                <th class="r"><button type="button" data-tord="vpd">Al giorno</button></th>
+                <th class="r"><button type="button" data-tord="likes">Like</button></th>
+                <th class="r"><button type="button" data-tord="commenti">Commenti</button></th>
+              </tr>
+              <tr class="filtri-colonne">
+                <th><div class="filtro-doppio"><input id="t-titolo" type="search" placeholder="Cerca nel titolo" aria-label="Cerca nel titolo" autocomplete="off">
+                  <select id="t-durata" aria-label="Durata"><option value="">Ogni durata</option><option value="0-15">Sotto 15 s</option><option value="15-30">15 – 30 s</option><option value="30-60">30 – 60 s</option><option value="60-999">Oltre 1 min</option></select></div></th>
+                <th><select id="t-canale" aria-label="Filtra per canale"><option value="">Tutti</option></select></th>
+                <th><select id="t-uscito" aria-label="Filtra per data"><option value="0">Sempre</option><option value="7">Ultimi 7 giorni</option><option value="30">Ultimi 30 giorni</option><option value="90">Ultimi 3 mesi</option><option value="365">Ultimo anno</option></select></th>
+                <th><select id="t-views" aria-label="Visualizzazioni minime"><option value="0">Tutte</option><option value="100000">100k o più</option><option value="500000">500k o più</option><option value="1000000">1 Mln o più</option><option value="5000000">5 Mln o più</option><option value="10000000">10 Mln o più</option></select></th>
+                <th><select id="t-volte" aria-label="Volte il normale minimo"><option value="3">×3 o più</option><option value="5">×5 o più</option><option value="10">×10 o più</option><option value="20">×20 o più</option></select></th>
+                <th><select id="t-vpd" aria-label="Visualizzazioni al giorno minime"><option value="0">Tutte</option><option value="1000">1k o più</option><option value="10000">10k o più</option><option value="100000">100k o più</option></select></th>
+                <th><select id="t-likes" aria-label="Like minimi"><option value="0">Tutti</option><option value="1000">1k o più</option><option value="10000">10k o più</option><option value="100000">100k o più</option></select></th>
+                <th><select id="t-commenti" aria-label="Commenti minimi"><option value="0">Tutti</option><option value="100">100 o più</option><option value="1000">1k o più</option><option value="10000">10k o più</option></select></th>
+              </tr>
+            </thead>
+            <tbody id="t-tbody"></tbody>
+          </table>
+        </div>
+        <button class="btn-light" id="t-more" type="button" hidden>Mostra altri</button>
       </section>
     </section>
 
@@ -3802,6 +3860,8 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         : 'Salvati in questo browser. Per ritrovarli da ogni computer entra con il tuo account nella pagina "Le tue ricerche". Dopo 30 giorni l\'elenco degli Shorts viene cancellato, come chiedono le regole di YouTube.';
       const box = $('c-lista');
       box.replaceChildren();
+      $('c-tutti-btn').hidden = !righe.some((r) => !(r.impostazioni && r.impostazioni.scaduta) && (online || (r.video && r.video.length)));
+      if (!$('c-tutti').hidden) mostraTuttiVirali(false);   // l'elenco aperto si aggiorna con i nuovi canali
       if (!righe.length) { box.append(paragrafo('Ancora nessun canale analizzato.', 'muted')); return; }
       const tabella = document.createElement('table'); tabella.className = 'storico';
       const trh = document.createElement('tr');
@@ -3855,6 +3915,126 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const scorri = document.createElement('div'); scorri.className = 'table-box storico-box'; scorri.append(tabella);
       box.append(scorri);
     }
+
+    // ----- Elenco di tutti i video virali dei canali analizzati -----
+    let tVideo = [];          // virali di tutti i canali, con il canale e "volte il normale"
+    let tOrdine = 'volte';
+    let tMostrati = 50;
+    const T_FILTRI = ['t-titolo', 't-durata', 't-canale', 't-uscito', 't-views', 't-volte', 't-vpd', 't-likes', 't-commenti'];
+    async function caricaTuttiVirali() {
+      const online = !!dbSessione;
+      let righe = (online ? canaliDb : canaliLocali()).filter((r) => !(r.impostazioni && r.impostazioni.scaduta));
+      // dello stesso canale tengo solo l'analisi più recente
+      const visti = new Set();
+      righe = righe.filter((r) => { const id = (r.impostazioni && r.impostazioni.canaleId) || r.ricerca; if (visti.has(id)) return false; visti.add(id); return true; });
+      if (online && righe.length) {
+        const conVideo = [];
+        for (const gruppo of aGruppi(righe.map((r) => r.id), 20)) {
+          conVideo.push(...await chiamaDb('/rest/v1/ricerche?select=id,video&id=in.(' + gruppo.join(',') + ')', { method: 'GET' }, true));
+        }
+        righe = righe.map((r) => Object.assign({}, r, { video: (conVideo.find((x) => x.id === r.id) || {}).video || [] }));
+      }
+      const tutti = [], idVisti = new Set(), canali = [];
+      righe.filter((r) => Array.isArray(r.video) && r.video.length).forEach((r) => {
+        const video = r.video.map((v) => Object.assign({}, v));
+        const { normale } = calcoliCanale(video);
+        const nome = (r.impostazioni && r.impostazioni.canaleNome) || video[0].canale || r.ricerca;
+        canali.push(nome);
+        video.filter((v) => v.virale && !idVisti.has(v.id)).forEach((v) => {
+          idVisti.add(v.id);
+          tutti.push(Object.assign(v, { canale: nome, normale, analizzato: r.impostazioni && r.impostazioni.momento }));
+        });
+      });
+      return { tutti, canali };
+    }
+    async function mostraTuttiVirali(scorri) {
+      const btn = $('c-tutti-btn');
+      btn.disabled = true;
+      try {
+        const { tutti, canali } = await caricaTuttiVirali();
+        tVideo = tutti;
+        const sel = $('t-canale'); const prima = sel.value;
+        sel.replaceChildren(new Option('Tutti', ''));
+        [...new Set(canali)].sort((a, b) => a.localeCompare(b, 'it')).forEach((n) => sel.append(new Option(n, n)));
+        sel.value = [...sel.options].some((o) => o.value === prima) ? prima : '';
+        $('c-tutti-sub').textContent = nf.format(tutti.length) + ' Shorts virali da ' + canali.length + (canali.length === 1 ? ' canale' : ' canali') +
+          ' (virale = almeno ' + VOLTE_VIRALE + ' volte quello che il suo canale fa di solito). Usa i filtri sotto i titoli delle colonne; premi un titolo per ordinare.';
+        $('c-tutti').hidden = false;
+        tMostrati = 50;
+        tTabella();
+        if (scorri !== false) $('c-tutti').scrollIntoView({ behavior: pocoMovimento.matches ? 'auto' : 'smooth', block: 'start' });
+      } catch (e) {
+        cMessaggio(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    function tFiltrati() {
+      const testo = normalizzaTesto($('t-titolo').value);
+      const canale = $('t-canale').value;
+      const giorni = +$('t-uscito').value, minV = +$('t-views').value, minX = +$('t-volte').value || VOLTE_VIRALE;
+      const minG = +$('t-vpd').value, minL = +$('t-likes').value, minC = +$('t-commenti').value;
+      const [dMin, dMax] = $('t-durata').value ? $('t-durata').value.split('-').map(Number) : [null, null];
+      const ora = Date.now();
+      return tVideo.filter((v) =>
+        (!testo || normalizzaTesto(v.titolo).includes(testo)) &&
+        (!canale || v.canale === canale) &&
+        (!giorni || ora - v.data <= giorni * GIORNO) &&
+        v.views >= minV && v.volte >= minX && (v.vpd || 0) >= minG && (!minL || (v.likes || 0) >= minL) && (!minC || (v.commenti || 0) >= minC) &&
+        (dMin == null || (v.durata != null && v.durata >= dMin && v.durata < dMax)));
+    }
+    function tTabella() {
+      const lista = tFiltrati();
+      const chiaveT = (v) => tOrdine === 'canale' ? v.canale : v[tOrdine];
+      lista.sort((a, b) => tOrdine === 'canale' ? String(chiaveT(a)).localeCompare(String(chiaveT(b)), 'it') || b.views - a.views
+        : (chiaveT(b) == null ? -1 : chiaveT(b)) - (chiaveT(a) == null ? -1 : chiaveT(a)));
+      document.querySelectorAll('[data-tord]').forEach((b) => { if (b.dataset.tord === tOrdine) b.setAttribute('aria-sort', 'descending'); else b.removeAttribute('aria-sort'); });
+      const shorts = (n) => nf.format(n) + (n === 1 ? ' Short' : ' Shorts');
+      $('c-tutti-conta').textContent = lista.length === tVideo.length ? shorts(lista.length) + '.'
+        : shorts(lista.length) + ' su ' + nf.format(tVideo.length) + (lista.length === 1 ? ' rispetta' : ' rispettano') + ' i filtri.';
+      const tb = $('t-tbody');
+      tb.replaceChildren();
+      if (!lista.length) {
+        const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 8;
+        td.append(paragrafo(tVideo.length ? 'Nessuno Short rispetta questi filtri. Prova ad allargarli o premi "Togli i filtri".' : 'Nessuno Short virale nei canali salvati.', 'muted'));
+        tr.append(td); tb.append(tr);
+      }
+      lista.slice(0, tMostrati).forEach((v) => {
+        const tr = document.createElement('tr');
+        const td0 = document.createElement('td');
+        const box = document.createElement('div'); box.className = 'vid';
+        const img = document.createElement('img'); img.src = v.thumb || ''; img.alt = ''; img.loading = 'lazy';
+        const info = document.createElement('div'); info.style.minWidth = '0';
+        const a = document.createElement('a'); a.href = linkVideo(v.id); a.target = '_blank'; a.rel = 'noopener'; a.textContent = v.titolo;
+        const sm = document.createElement('small'); sm.textContent = v.durata != null ? durataTesto(v.durata) : '';
+        info.append(a, sm); box.append(img, info); td0.append(box); tr.append(td0);
+        const tdC = document.createElement('td'); tdC.className = 'canale-cella'; tdC.textContent = v.canale;
+        tdC.title = 'Di solito fa ' + compatto(v.normale) + ' visualizzazioni per Short'; tr.append(tdC);
+        [[dataBreve(new Date(v.data)) + ' ' + new Date(v.data).getFullYear(), ''], [compatto(v.views), 'r num'], ['×' + nf1.format(v.volte), 'r num forte'],
+          [compatto(v.vpd), 'r num'], [v.likes == null ? '—' : compatto(v.likes), 'r num'], [v.commenti == null ? '—' : compatto(v.commenti), 'r num']]
+          .forEach(([t, cl]) => { const td = document.createElement('td'); td.className = cl; td.textContent = t; tr.append(td); });
+        tb.append(tr);
+      });
+      const altri = lista.length - tMostrati;
+      $('t-more').hidden = altri <= 0;
+      $('t-more').textContent = 'Mostra altri ' + Math.min(50, Math.max(0, altri));
+    }
+    $('c-tutti-btn').addEventListener('click', () => mostraTuttiVirali(true));
+    T_FILTRI.forEach((id) => $(id).addEventListener(id === 't-titolo' ? 'input' : 'change', () => { tMostrati = 50; tTabella(); }));
+    $('c-tutti-reset').addEventListener('click', () => {
+      T_FILTRI.forEach((id) => { $(id).value = id === 't-volte' ? '3' : (id === 't-titolo' || id === 't-canale' || id === 't-durata') ? '' : '0'; });
+      tMostrati = 50; tTabella();
+    });
+    document.querySelectorAll('[data-tord]').forEach((b) => b.addEventListener('click', () => { tOrdine = b.dataset.tord; tTabella(); }));
+    $('t-more').addEventListener('click', () => { tMostrati += 50; tTabella(); });
+    $('c-tutti-excel').addEventListener('click', () => {
+      const X = window.RadarExcel;
+      X.scarica(X.creaXlsx(X.fogliRicerca(datiExcel(tFiltrati()))), nomeExcel('virali-dei-canali'));
+    });
+    $('c-tutti-csv').addEventListener('click', () => {
+      scaricaCsv(tFiltrati().map((v) => Object.assign({ ricerca: v.canale }, v)), 'radar-virali-dei-canali-' + new Date().toISOString().slice(0, 10) + '.csv');
+    });
+
     async function apriCanale(r, bottone, online) {
       bottone.disabled = true;
       try {
