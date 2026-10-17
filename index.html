@@ -373,6 +373,16 @@
     @media (max-width: 760px) { .c-extra { grid-template-columns: minmax(0, 1fr); } }
 
 
+    /* Filtro sopra l'elenco degli Shorts, con ricalcolo */
+    .filtro-elenco { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; padding: 12px 14px; border-radius: 12px;
+      background: color-mix(in srgb, var(--g1) 4%, var(--bg)); border: 1px solid var(--line); margin-top: 4px; }
+    .filtro-elenco .field.grow { flex: 1 1 220px; }
+    .filtro-elenco #tf-ricalcola { padding: 10px 16px; font-size: .88rem; }
+    .filtro-elenco #tf-ricalcola:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; }
+    #ricalcolo-avviso.msg.info {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 10%, var(--surface)); color: var(--ink);
+    }
     /* Il termine cercato, in grande */
     .ricerca-banner { display: grid; gap: 2px; padding: 4px 2px 0; min-width: 0; }
     .ricerca-banner .label { color: var(--g1); }
@@ -395,6 +405,7 @@
     .stella { background: none; padding: 0 2px; font-size: 1.15rem; line-height: 1.2; color: var(--muted); border-radius: 6px; flex-shrink: 0; }
     .stella[aria-pressed="true"] { color: #f5b301; }
     .stella:hover { color: #f5b301; }
+    #c-tutti-btn { white-space: normal; text-align: center; line-height: 1.3; }
     /* Gruppi di canali */
     .gruppo-riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .gruppo-riga select { min-width: 200px; }
@@ -463,10 +474,10 @@
     .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .card {
       background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
-      padding: 20px; display: grid; gap: 12px; align-content: start; min-width: 0;
+      padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; min-width: 0;
     }
     .card.wide { grid-column: 1 / -1; }
-    .card-head { display: grid; gap: 2px; }
+    .card-head { display: grid; gap: 2px; min-width: 0; }
     .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .card-head p { font-size: .87rem; color: var(--ink-2); }
     .chart { width: 100%; min-width: 0; }
@@ -1108,6 +1119,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           <h1 id="r-termine"></h1>
           <p id="r-quando"></p>
         </section>
+        <p class="msg info" id="ricalcolo-avviso" hidden></p>
         <div class="save-bar" id="save-bar">
           <p id="save-title">Risultati</p>
           <button id="save-html" class="shimmer" type="button">
@@ -1328,6 +1340,15 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
             </div>
           </div>
           <p class="muted" style="font-size:.85rem">Il file si apre con Excel o Fogli Google. Premi i titoli delle colonne per ordinare.</p>
+          <div class="filtro-elenco" id="filtro-elenco">
+            <label class="field grow"><span class="label">Filtra per titolo</span>
+              <input id="tf-termine" type="search" placeholder="Es. pizza, tier list…" autocomplete="off"></label>
+            <label class="field"><span class="label">&nbsp;</span>
+              <select id="tf-modo"><option value="contiene">Che contengono questa parola</option><option value="non">Che NON contengono questa parola</option></select></label>
+            <button id="tf-ricalcola" class="shimmer" type="button" disabled>Ricalcola solo su questi</button>
+            <button id="tf-ripristina" class="btn-link" type="button" hidden>↺ Mostra di nuovo tutti gli Shorts</button>
+          </div>
+          <p class="muted" id="tf-conta" style="font-size:.85rem"></p>
           <div class="table-box">
             <table>
               <thead>
@@ -2784,12 +2805,58 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
 
     // ---------- Tabella ----------
     let videoAttuali = [];
+    let videoOriginali = [];   // tutti gli Shorts trovati in origine, prima di un eventuale "Ricalcola solo su questi"
     let ricercaAttuale = '';
     let ordine = 'views';
+    let ricalcolato = false;   // true se i punteggi sono stati ricalcolati su un elenco filtrato
+
+    // ---------- Filtro sopra l'elenco: mostra solo gli Shorts che contengono (o non contengono) una parola nel titolo ----------
+    function applicaFiltroElenco(video) {
+      const termine = normalizzaTesto($('tf-termine').value);
+      if (!termine) return video;
+      const escludi = $('tf-modo').value === 'non';
+      return video.filter((v) => normalizzaTesto(v.titolo).includes(termine) !== escludi);
+    }
+    function aggiornaFiltroElenco(nFiltrati) {
+      const termine = $('tf-termine').value.trim();
+      const tot = videoAttuali.length;
+      const shorts = (n) => n + (n === 1 ? ' Short' : ' Shorts');
+      $('tf-conta').textContent = !termine ? shorts(tot) + ' in elenco.' : shorts(nFiltrati) + ' su ' + shorts(tot) + ' rispettano il filtro.';
+      $('tf-ricalcola').disabled = !termine || nFiltrati === 0 || nFiltrati === tot;
+      $('tf-ripristina').hidden = !ricalcolato;
+    }
+    function ricalcolaSuFiltro() {
+      const filtrati = applicaFiltroElenco(videoAttuali);
+      if (!filtrati.length) return;
+      videoAttuali = filtrati;
+      ricalcolato = true;
+      dbSalvataId = null;
+      $('tf-termine').value = '';
+      statoSalvataggio('');
+      mostraRisultati();
+      if (dbSessione && $('db-auto').checked) salvaInDb();
+      else $('db-save').hidden = !dbSessione;
+    }
+    function ripristinaVideoOriginali() {
+      videoAttuali = videoOriginali;
+      ricalcolato = false;
+      dbSalvataId = null;
+      $('tf-termine').value = '';
+      statoSalvataggio('');
+      mostraRisultati();
+      if (dbSessione && $('db-auto').checked) salvaInDb();
+      else $('db-save').hidden = !dbSessione;
+    }
+    $('tf-termine').addEventListener('input', conCalma(() => tabella()));
+    $('tf-modo').addEventListener('change', () => tabella());
+    $('tf-ricalcola').addEventListener('click', ricalcolaSuFiltro);
+    $('tf-ripristina').addEventListener('click', ripristinaVideoOriginali);
+
     function tabella() {
       const tb = $('tbody');
       tb.replaceChildren();
-      const lista = [...videoAttuali].sort((a, b) => (b[ordine] == null ? -1 : b[ordine]) - (a[ordine] == null ? -1 : a[ordine]));
+      const filtrati = applicaFiltroElenco(videoAttuali);
+      const lista = [...filtrati].sort((a, b) => (b[ordine] == null ? -1 : b[ordine]) - (a[ordine] == null ? -1 : a[ordine]));
       lista.forEach((v) => {
         const tr = document.createElement('tr');
         const td0 = document.createElement('td');
@@ -2817,6 +2884,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       document.querySelectorAll('#results th button').forEach((b) => {
         if (b.dataset.sort === ordine) b.setAttribute('aria-sort', 'descending'); else b.removeAttribute('aria-sort');
       });
+      aggiornaFiltroElenco(filtrati.length);
     }
 
     // ---------- Archivio e download ----------
@@ -2887,7 +2955,7 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const ora = new Date();
       const copia = $('results').firstElementChild.cloneNode(true);
       copia.querySelector('#save-bar').remove();
-      copia.querySelectorAll('.actions, .table-head + p').forEach((n) => n.remove());
+      copia.querySelectorAll('.actions, .table-head + p, #filtro-elenco, #tf-conta').forEach((n) => n.remove());
 
       // il trend lo salvo per tutti e tre i periodi (giorni, settimane, mesi):
       // nel file se ne vede uno alla volta e i pulsanti passano da uno all'altro
@@ -3042,6 +3110,10 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
         quando.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' alle ' +
         quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) +
         (livelloRicerca && LIVELLI[livelloRicerca] ? ' · ricerca ' + LIVELLI[livelloRicerca].nome : '');
+      const avviso = $('ricalcolo-avviso');
+      avviso.hidden = !ricalcolato;
+      if (ricalcolato) avviso.textContent = 'Questi numeri sono ricalcolati solo su ' + nf.format(videoAttuali.length) + ' dei ' +
+        nf.format(videoOriginali.length) + ' Shorts trovati in origine (dopo aver tolto gli altri con il filtro). Per tornare a tutti gli Shorts premi "↺ Mostra di nuovo tutti gli Shorts" sotto l\'elenco.';
       mostraNumeriRicerca();
       tabella();
       faiComparire(document.querySelectorAll('#results .verdict, #results .thermo, #results #trend, #results .charts > .card, #results > div > .card:last-child'));
@@ -3062,7 +3134,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       };
       tile(videoAttuali.length, 'Shorts analizzati', 'con "rank" o "ranking" nel titolo, fino a 3 minuti');
       tile(canali, 'Canali diversi', 'che hanno pubblicato questi Shorts');
-      if (infoRicerca.guardati) tile(infoRicerca.guardati, 'Shorts guardati su YouTube',
+      if (ricalcolato) tile(videoOriginali.length - videoAttuali.length, 'Shorts tolti con il filtro',
+        'sui ' + nf.format(videoOriginali.length) + ' Shorts trovati in origine');
+      else if (infoRicerca.guardati) tile(infoRicerca.guardati, 'Shorts guardati su YouTube',
         nf.format(Math.max(0, infoRicerca.guardati - videoAttuali.length)) + ' scartati: fuori tema, troppo lunghi o senza rank/ranking');
       rendiMagici(box);
     }
@@ -3139,6 +3213,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           return;
         }
         videoAttuali = video;
+        videoOriginali = video;
+        ricalcolato = false;
+        $('tf-termine').value = ''; $('tf-modo').value = 'contiene';
         ricercaAttuale = termine;
         oraAnalisi = momento;
         livelloRicerca = livello;
@@ -3615,6 +3692,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
           throw new Error('I dettagli di questa ricerca sono stati cancellati dopo 30 giorni, come chiedono le regole di YouTube. Rifalla per avere dati aggiornati.');
         const imp = r[0].impostazioni || {};
         videoAttuali = r[0].video;
+        videoOriginali = r[0].video;
+        ricalcolato = false;
+        $('tf-termine').value = ''; $('tf-modo').value = 'contiene';
         ricercaAttuale = r[0].ricerca;
         oraAnalisi = imp.momento || new Date(r[0].creato).getTime();
         livelloRicerca = LIVELLI[imp.livello] ? imp.livello : null;
@@ -4087,10 +4167,9 @@ create index if not exists ricerche_utente_data on public.ricerche (user_id, cre
       const tuttiGruppi = cGruppoVista === TUTTI_GRUPPI;
       const delGruppo = righeCanali().filter((r) => tuttiGruppi || gruppoDi(r) === cGruppoVista);
       $('c-storico-titolo').textContent = tuttiGruppi ? 'Canali analizzati · tutti i gruppi' : 'Canali analizzati · ' + cGruppoVista;
-      $('c-storico-sub').textContent = (online
+      $('c-storico-sub').textContent = online
         ? 'Salvati nel database online: li ritrovi da ogni computer.'
-        : 'Salvati in questo browser. Per ritrovarli da ogni computer entra con il tuo account nella pagina "Le tue ricerche".') +
-        '';
+        : 'Salvati in questo browser. Per ritrovarli da ogni computer entra con il tuo account nella pagina "Le tue ricerche".';
       $('c-tutti-btn').hidden = !delGruppo.some((r) => !(r.impostazioni && r.impostazioni.scaduta) && (online || (r.video && r.video.length)));
       $('c-tutti-btn').textContent = tuttiGruppi ? 'Elenco di tutti i video virali (tutti i gruppi)' : 'Elenco dei video virali del gruppo "' + cGruppoVista + '"';
       if (!$('c-tutti').hidden && firmaCanali() !== firmaVirali) mostraTuttiVirali(false);   // l'elenco aperto si aggiorna solo se sono cambiati i canali
